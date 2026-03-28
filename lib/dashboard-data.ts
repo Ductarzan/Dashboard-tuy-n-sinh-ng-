@@ -108,68 +108,50 @@ function cellToString(value: RawCell) {
 }
 
 function normalizeStatus(value: RawCell) {
-  if (!cellToString(value)) return "0. Trống / Chưa liên hệ";
+  if (!cellToString(value)) return "5. Chưa liên hệ";
   const str = cellToString(value).toLowerCase();
 
-  if (str.includes("nhập học")) return "1. Đã Nhập học";
-  if (str.includes("nộp hs") || str.includes("nộp hồ sơ")) return "2. Đã Nộp hồ sơ";
-  if (str.includes("suy nghĩ") || str.includes("cân nhắc") || str.includes("xác nhận")) {
-    return "3. Đang suy nghĩ / Chờ xác nhận";
-  }
-  if (str.includes("kb") || str.includes("kết bạn") || str.includes("zalo") || str.includes("add")) {
-    return "4. Đang chăm sóc Zalo (Đã KB)";
+  if (str.includes("đã nhập học") || str.includes("da nhap hoc")) {
+    return "1. Thành công";
   }
   if (
-    str.includes("đã lh") ||
-    str.includes("nghe máy") ||
-    str.includes("gửi tn") ||
-    str.includes("phản hồi") ||
-    str.includes("trl") ||
-    str.includes("đồng ý")
+    str.includes("tiềm năng") ||
+    str.includes("tienm nang") ||
+    str.includes("tư vấn") ||
+    str.includes("tư vẫn") ||
+    str.includes("tu van") ||
+    str.includes("đã nộp hs") ||
+    str.includes("da nop hs") ||
+    str.includes("nộp hồ sơ")
   ) {
-    return "5. Đã gọi nghe máy / Có tương tác";
-  }
-  if (str.includes("bố") || str.includes("mẹ") || str.includes("ph ") || str.includes("phụ huynh")) {
-    return "6. Đang liên hệ qua Phụ huynh";
+    return "2. Tiềm năng";
   }
   if (
-    str.includes("knm") ||
-    str.includes("k nghe") ||
-    str.includes("ko nghe") ||
-    str.includes("chưa liên hệ") ||
-    str.includes("tắt máy") ||
-    str.includes("máy bận") ||
-    str.includes("gọi lại")
-  ) {
-    return "7. Không nghe máy / Chưa LH được";
-  }
-  if (
-    str.includes("nhu cầu") ||
-    str.includes("kqt") ||
-    str.includes("quan tâm") ||
-    str.includes("bảo ko") ||
-    str.includes("ko đi học") ||
-    str.includes("k qt")
-  ) {
-    return "8. Từ chối / Không có nhu cầu";
-  }
-  if (
-    str.includes("sai") ||
+    str.includes("đã liên hệ") ||
+    str.includes("da lien he") ||
+    str.includes("không nghe máy") ||
+    str.includes("khong nghe may") ||
     str.includes("thuê bao") ||
-    str.includes("nhầm") ||
-    str.includes("k có sdt") ||
-    str.includes("k gọi") ||
-    str.includes("ko gọi")
+    str.includes("thue bao")
   ) {
-    return "9. Sai số / Thuê bao / Số ảo (Rác)";
+    return "3. Đang xử lý";
   }
-  if (str.includes("hương hằng") || str.includes("hằng") || str.includes("phương anh")) {
-    return "Khác (Nhập sai cột)";
+  if (
+    str.includes("không có nhu cầu") ||
+    str.includes("khong co nhu cau") ||
+    str.includes("đã rút") ||
+    str.includes("da rut") ||
+    str.includes("sai số") ||
+    str.includes("sai so")
+  ) {
+    return "4. K.H hỏng";
+  }
+  if (str === "tình trạng" || str === "tinh trang") {
+    return "5. Chưa liên hệ";
   }
 
-  return "Trạng thái lẻ tẻ khác";
+  return "3. Đang xử lý";
 }
-
 function normalizeOfflineStatus(value: RawCell) {
   if (!cellToString(value)) return "5. Chưa liên hệ";
   const str = cellToString(value).toLowerCase();
@@ -342,9 +324,9 @@ function buildSaleMatrix(
 
     result[sale].total += 1;
 
-    if (statusGroup.startsWith("1.") || statusGroup.startsWith("2.")) {
+    if (statusGroup.startsWith("1.")) {
       result[sale].thanhCong += 1;
-    } else if (statusGroup.startsWith("3.")) {
+    } else if (statusGroup.startsWith("2.") || statusGroup.startsWith("3.")) {
       result[sale].dangXuLy += 1;
     } else if (statusGroup.startsWith("4.")) {
       result[sale].thatBai += 1;
@@ -456,7 +438,7 @@ function buildIndustryTrends(
     bucket.total += 1;
 
     const statusGroup = normalizer(row[statusIdx]);
-    if (statusGroup.startsWith("1.") || statusGroup.startsWith("2.")) {
+    if (statusGroup.startsWith("1.")) {
       bucket.success += 1;
     }
 
@@ -911,6 +893,8 @@ export async function getDashboardData() {
 
   return buildPayload(buildDemoDataset(), true);
 }
+
+
 
 
 
