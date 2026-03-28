@@ -358,7 +358,7 @@ function buildSaleMatrix(
   return Object.values(result).sort((a, b) => b.total - a.total);
 }
 
-function parseDate(value: RawCell) {
+function parseDate(value: RawCell): Date | null {
   if (!value) return null;
   if ((value as any) instanceof Date) return value;
   const date = new Date(value as string);
