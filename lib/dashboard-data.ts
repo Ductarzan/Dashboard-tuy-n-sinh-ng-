@@ -379,6 +379,32 @@ function isoWeekKey(date: Date) {
   return `${tmp.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
+function normalizeIndustryName(value: RawCell) {
+  const raw = cellToString(value);
+  if (!raw) return "Chưa có ngành";
+
+  const withoutCode = raw.replace(/\s*-\s*\d+\s*$/, "").replace(/\s+/g, " ").trim();
+  const key = withoutCode.toLocaleLowerCase("vi-VN");
+
+  const aliases: Record<string, string> = {
+    "quản trị kinh doanh": "Quản trị kinh doanh",
+    "kỹ thuật xét nghiệm y học": "Kỹ thuật xét nghiệm y học",
+    "ngôn ngữ trung quốc": "Ngôn ngữ Trung Quốc",
+    "ngôn ngữ hàn quốc": "Ngôn ngữ Hàn Quốc",
+    "ngôn ngữ nhật bản": "Ngôn ngữ Nhật Bản",
+    "thú y": "Thú y",
+    "điều dưỡng": "Điều dưỡng",
+    "kế toán": "Kế toán",
+    "tài chính ngân hàng": "Tài chính ngân hàng",
+    "thương mại điện tử": "Thương mại điện tử",
+    "công nghệ thông tin": "Công nghệ thông tin",
+    "công nghệ kỹ thuật ô tô": "Công nghệ kỹ thuật ô tô",
+    "luật kinh tế": "Luật kinh tế",
+    "dược học": "Dược học"
+  };
+
+  return aliases[key] || withoutCode;
+}
 function buildIndustryTrends(
   data: RawRow[],
   dateIdx: number,
@@ -414,7 +440,7 @@ function buildIndustryTrends(
   > = {};
 
   for (const row of data) {
-    const industry = cellToString(row[industryIdx]) || "Chưa có ngành";
+    const industry = normalizeIndustryName(row[industryIdx]);
     if (!stats[industry]) {
       stats[industry] = {
         total: 0,
@@ -885,5 +911,6 @@ export async function getDashboardData() {
 
   return buildPayload(buildDemoDataset(), true);
 }
+
 
 
