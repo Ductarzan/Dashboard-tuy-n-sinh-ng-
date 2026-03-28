@@ -275,3 +275,4 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
     </section>
   );
 }
+
