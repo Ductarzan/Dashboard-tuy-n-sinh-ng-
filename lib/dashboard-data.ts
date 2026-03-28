@@ -359,9 +359,10 @@ function buildSaleMatrix(
 }
 
 function parseDate(value: RawCell): Date | null {
-  if (!value) return null;
-  if ((value as any) instanceof Date) return value;
-  const date = new Date(value as string);
+  if (value === null || value === undefined || value === "") return null;
+  const input =
+    typeof value === "number" ? value : typeof value === "string" ? value : String(value);
+  const date = new Date(input);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -884,4 +885,5 @@ export async function getDashboardData() {
 
   return buildPayload(buildDemoDataset(), true);
 }
+
 
