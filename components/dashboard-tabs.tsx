@@ -13,7 +13,7 @@ import type { getDashboardData } from "@/lib/dashboard-data";
 
 type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
 type TabKey = "online" | "offline";
-type IndustryDaysKey = "d7" | "d30" | "d90" | "all";
+type IndustryDaysKey = "today" | "yesterday" | "d7" | "d30" | "d90" | "all";
 
 const tabs: Array<{ key: TabKey; label: string; description: string }> = [
   {
@@ -30,7 +30,7 @@ const tabs: Array<{ key: TabKey; label: string; description: string }> = [
 
 export function DashboardTabs({ data }: { data: DashboardData }) {
   const [active, setActive] = useState<TabKey>("online");
-  const [industryDays, setIndustryDays] = useState<IndustryDaysKey>("d30");
+  const [industryDays, setIndustryDays] = useState<IndustryDaysKey>("today");
   const [industryPeriod, setIndustryPeriod] = useState<"day" | "week">("week");
 
   return (
@@ -123,6 +123,22 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
               />
               <div className="industry-toolbar">
                 <div className="segmented" role="tablist" aria-label="Khoảng ngày thống kê">
+                  <button
+                    type="button"
+                    className="segmented-button"
+                    data-active={industryDays === "today"}
+                    onClick={() => setIndustryDays("today")}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    className="segmented-button"
+                    data-active={industryDays === "yesterday"}
+                    onClick={() => setIndustryDays("yesterday")}
+                  >
+                    Yesterday
+                  </button>
                   <button
                     type="button"
                     className="segmented-button"
@@ -345,3 +361,4 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
     </section>
   );
 }
+

@@ -40,6 +40,8 @@ type IndustryTrendRow = {
 };
 
 type IndustryTrendBuckets = {
+  today: IndustryTrendRow[];
+  yesterday: IndustryTrendRow[];
   d7: IndustryTrendRow[];
   d30: IndustryTrendRow[];
   d90: IndustryTrendRow[];
@@ -452,7 +454,8 @@ function buildIndustryTrends(
   industryIdx: number,
   statusIdx: number,
   normalizer: (value: RawCell) => string,
-  lookbackDays?: number
+  lookbackDays?: number,
+  endOffsetDays = 0
 ): IndustryTrendRow[] {
   const datedRows = data
     .map((row) => ({ row, date: parseDate(row[dateIdx]) }))
@@ -462,16 +465,28 @@ function buildIndustryTrends(
     ? new Date(Math.max(...datedRows.map((item) => item.date.getTime())))
     : null;
 
-  const latestWeekKey = latestDate ? isoWeekKey(latestDate) : null;
-  const prevWeekKey = latestDate
-    ? isoWeekKey(new Date(latestDate.getTime() - 7 * 86400000))
+  const anchorDate = latestDate
+    ? new Date(
+        latestDate.getFullYear(),
+        latestDate.getMonth(),
+        latestDate.getDate() - endOffsetDays,
+        23,
+        59,
+        59,
+        999
+      )
+    : null;
+
+  const latestWeekKey = anchorDate ? isoWeekKey(anchorDate) : null;
+  const prevWeekKey = anchorDate
+    ? isoWeekKey(new Date(anchorDate.getTime() - 7 * 86400000))
     : null;
 
   const windowDays = lookbackDays ?? null;
-  const currentWindowEndMs = latestDate ? latestDate.getTime() : null;
+  const currentWindowEndMs = anchorDate ? anchorDate.getTime() : null;
   const currentWindowStartMs =
-    latestDate && windowDays
-      ? new Date(latestDate.getFullYear(), latestDate.getMonth(), latestDate.getDate()).getTime() -
+    anchorDate && windowDays
+      ? new Date(anchorDate.getFullYear(), anchorDate.getMonth(), anchorDate.getDate()).getTime() -
         (windowDays - 1) * 86400000
       : null;
   const prevWindowEndMs = currentWindowStartMs !== null ? currentWindowStartMs - 1 : null;
@@ -564,6 +579,8 @@ function buildIndustryTrendBuckets(
   normalizer: (value: RawCell) => string
 ): IndustryTrendBuckets {
   return {
+    today: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer, 1, 0),
+    yesterday: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer, 1, 1),
     d7: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer, 7),
     d30: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer, 30),
     d90: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer, 90),
@@ -998,6 +1015,7 @@ export async function getDashboardData() {
 
   return buildPayload(buildDemoDataset(), true);
 }
+
 
 
 
