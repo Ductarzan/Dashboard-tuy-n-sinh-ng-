@@ -31,6 +31,14 @@ type RelationInterestRow = {
   blankInterestCells: number;
 };
 
+type IndustryTrendRow = {
+  name: string;
+  total: number;
+  dayChangePct: number | null;
+  weekChangePct: number | null;
+  conversionRate: number;
+};
+
 type DashboardPayload = {
   generatedAt: string;
   timezone: string;
@@ -65,6 +73,10 @@ type DashboardPayload = {
       blankInterestCells: number;
       totalInterestCells: number;
     };
+  };
+  industry: {
+    cq: IndustryTrendRow[];
+    ncq: IndustryTrendRow[];
   };
   cq: {
     saleBreakdown: SimpleCount[];
@@ -346,6 +358,106 @@ function buildSaleMatrix(
   return Object.values(result).sort((a, b) => b.total - a.total);
 }
 
+function parseDate(value: RawCell) {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  const date = new Date(value as string);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dayKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function isoWeekKey(date: Date) {
+  const tmp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = tmp.getUTCDay() || 7;
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((tmp.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${tmp.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+function buildIndustryTrends(
+  data: RawRow[],
+  dateIdx: number,
+  industryIdx: number,
+  statusIdx: number,
+  normalizer: (value: RawCell) => string
+): IndustryTrendRow[] {
+  const datedRows = data
+    .map((row) => ({ row, date: parseDate(row[dateIdx]) }))
+    .filter((item) => item.date !== null) as Array<{ row: RawRow; date: Date }>;
+
+  const latestDate = datedRows.length
+    ? new Date(Math.max(...datedRows.map((item) => item.date.getTime())))
+    : null;
+
+  const latestDayKey = latestDate ? dayKey(latestDate) : null;
+  const prevDayKey = latestDate ? dayKey(new Date(latestDate.getTime() - 86400000)) : null;
+  const latestWeekKey = latestDate ? isoWeekKey(latestDate) : null;
+  const prevWeekKey = latestDate
+    ? isoWeekKey(new Date(latestDate.getTime() - 7 * 86400000))
+    : null;
+
+  const stats: Record<
+    string,
+    {
+      total: number;
+      success: number;
+      dayCount: number;
+      prevDayCount: number;
+      weekCount: number;
+      prevWeekCount: number;
+    }
+  > = {};
+
+  for (const row of data) {
+    const industry = cellToString(row[industryIdx]) || "Chưa có ngành";
+    if (!stats[industry]) {
+      stats[industry] = {
+        total: 0,
+        success: 0,
+        dayCount: 0,
+        prevDayCount: 0,
+        weekCount: 0,
+        prevWeekCount: 0
+      };
+    }
+
+    const bucket = stats[industry];
+    bucket.total += 1;
+
+    const statusGroup = normalizer(row[statusIdx]);
+    if (statusGroup.startsWith("1.") || statusGroup.startsWith("2.")) {
+      bucket.success += 1;
+    }
+
+    const rowDate = parseDate(row[dateIdx]);
+    if (rowDate && latestDayKey && prevDayKey && latestWeekKey && prevWeekKey) {
+      const rowDayKey = dayKey(rowDate);
+      if (rowDayKey === latestDayKey) bucket.dayCount += 1;
+      if (rowDayKey === prevDayKey) bucket.prevDayCount += 1;
+
+      const rowWeekKey = isoWeekKey(rowDate);
+      if (rowWeekKey === latestWeekKey) bucket.weekCount += 1;
+      if (rowWeekKey === prevWeekKey) bucket.prevWeekCount += 1;
+    }
+  }
+
+  return Object.entries(stats)
+    .map(([name, item]) => ({
+      name,
+      total: item.total,
+      dayChangePct:
+        item.prevDayCount > 0 ? ((item.dayCount - item.prevDayCount) / item.prevDayCount) * 100 : null,
+      weekChangePct:
+        item.prevWeekCount > 0 ? ((item.weekCount - item.prevWeekCount) / item.prevWeekCount) * 100 : null,
+      conversionRate: item.total > 0 ? (item.success / item.total) * 100 : 0
+    }))
+    .sort((a, b) => b.total - a.total);
+}
+
 function cleanRows(rows: RawRow[], keyIndex: number) {
   return rows.filter((row) => cellToString(row[keyIndex]) !== "");
 }
@@ -480,7 +592,7 @@ function buildDemoDataset(): Record<(typeof sheetNames)[number], unknown[][]> {
       "",
       "",
       "",
-      "",
+      "CNTT",
       "",
       "",
       "",
@@ -516,7 +628,7 @@ function buildDemoDataset(): Record<(typeof sheetNames)[number], unknown[][]> {
       "",
       "",
       "",
-      "",
+      "Dược",
       "",
       "",
       "",
@@ -552,7 +664,7 @@ function buildDemoDataset(): Record<(typeof sheetNames)[number], unknown[][]> {
       "",
       "",
       "",
-      "",
+      "Kế toán",
       "",
       "",
       "",
@@ -588,7 +700,7 @@ function buildDemoDataset(): Record<(typeof sheetNames)[number], unknown[][]> {
       "",
       "",
       "",
-      "",
+      "CNTT",
       "",
       "",
       "",
@@ -655,10 +767,10 @@ function buildDemoDataset(): Record<(typeof sheetNames)[number], unknown[][]> {
   ];
 
   const ncqRows = [
-    ["Lead", "Phone", "Sale", "Student", "x", "x", "x", "x", "x", "Status"],
-    ["1", "", "Sale Hoa", "Hoc vien 1", "", "", "", "", "", "Kết bạn Zalo"],
-    ["2", "", "Sale Hoa", "Hoc vien 2", "", "", "", "", "", "Từ chối"],
-    ["3", "", "Sale Dat", "Hoc vien 3", "", "", "", "", "", "Nộp HS"]
+    ["Lead", "Phone", "Sale", "Student", "x", "x", "x", "x", "Ngành", "Status"],
+    ["1", "", "Sale Hoa", "Hoc vien 1", "", "", "", "", "Marketing", "Kết bạn Zalo"],
+    ["2", "", "Sale Hoa", "Hoc vien 2", "", "", "", "", "Kế toán", "Từ chối"],
+    ["3", "", "Sale Dat", "Hoc vien 3", "", "", "", "", "CNTT", "Nộp HS"]
   ];
 
   const offlineRows = [
@@ -734,6 +846,10 @@ function buildPayload(
         ...buildInterestByColumn(offlineData, [6, 7]),
         saleToInterest: buildRelationInterest(offlineData, 9, [6, 7])
       }
+    },
+    industry: {
+      cq: buildIndustryTrends(cqData, 0, 7, 33, normalizeStatus),
+      ncq: buildIndustryTrends(ncqData, 0, 8, 9, normalizeStatus)
     },
     cq: {
       saleBreakdown: countBy(cqData, 3),

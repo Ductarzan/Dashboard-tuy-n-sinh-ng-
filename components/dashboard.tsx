@@ -19,6 +19,14 @@ type RelationRow = {
   blankInterestCells: number;
 };
 
+type IndustryTrendRow = {
+  name: string;
+  total: number;
+  dayChangePct: number | null;
+  weekChangePct: number | null;
+  conversionRate: number;
+};
+
 export function MetricCard({
   label,
   value,
@@ -170,6 +178,50 @@ export function RelationTable({
                 <td>{row.total}</td>
                 <td>{formatInterestList(row.topInterests)}</td>
                 <td>{row.blankInterestCells}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function formatTrend(value: number | null) {
+  if (value === null) return "—";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(1)}%`;
+}
+
+export function IndustryTable({
+  title,
+  rows
+}: {
+  title: string;
+  rows: IndustryTrendRow[];
+}) {
+  return (
+    <section className="subpanel">
+      <h3>{title}</h3>
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Ngành</th>
+              <th>Tổng leads</th>
+              <th>% so với hôm qua</th>
+              <th>% so với tuần trước</th>
+              <th>Tỷ lệ conversion</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.name}>
+                <td>{row.name}</td>
+                <td>{row.total}</td>
+                <td>{formatTrend(row.dayChangePct)}</td>
+                <td>{formatTrend(row.weekChangePct)}</td>
+                <td>{row.conversionRate.toFixed(1)}%</td>
               </tr>
             ))}
           </tbody>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { LeadsOverviewChart, StatusPieChart, TopSalesChart } from "@/components/charts";
 import {
   DataTable,
+  IndustryTable,
   RelationTable,
   SectionHeading,
   SimpleBarTable
@@ -109,18 +110,12 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
 
             <section className="detail-section">
               <SectionHeading
-                title="Dòng chảy nguồn và phân bổ phụ trách theo ngành"
-                subtitle="Phân tích nguồn phát sinh, ngành được quan tâm và mức độ tập trung của từng sale theo từng nhóm ngành"
+                title="Thống kê tất cả ngành theo hệ"
+                subtitle="Theo dõi biến động ngày/tuần và tỷ lệ chuyển đổi theo ngành"
               />
-              <div className="relation-grid relation-grid--two">
-                <div className="relation-column">
-                  <RelationTable title="CQ: Dòng chảy nguồn -> ngành" rows={data.details.cq.sourceToInterest} />
-                  <RelationTable title="CQ: Phân bổ sale -> ngành" rows={data.details.cq.saleToInterest} />
-                </div>
-                <div className="relation-column">
-                  <RelationTable title="NCQ: Dòng chảy nguồn -> ngành" rows={data.details.ncq.sourceToInterest} />
-                  <RelationTable title="NCQ: Phân bổ sale -> ngành" rows={data.details.ncq.saleToInterest} />
-                </div>
+              <div className="detail-grid detail-grid--two">
+                <IndustryTable title="CQ: Ngành (Nguyện vọng 01)" rows={data.industry.cq} />
+                <IndustryTable title="NCQ: Ngành" rows={data.industry.ncq} />
               </div>
             </section>
 
