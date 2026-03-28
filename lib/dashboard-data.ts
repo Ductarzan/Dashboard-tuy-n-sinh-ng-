@@ -39,6 +39,13 @@ type IndustryTrendRow = {
   conversionRate: number;
 };
 
+type IndustryTrendBuckets = {
+  d7: IndustryTrendRow[];
+  d30: IndustryTrendRow[];
+  d90: IndustryTrendRow[];
+  all: IndustryTrendRow[];
+};
+
 type DashboardPayload = {
   generatedAt: string;
   timezone: string;
@@ -75,8 +82,8 @@ type DashboardPayload = {
     };
   };
   industry: {
-    cq: IndustryTrendRow[];
-    ncq: IndustryTrendRow[];
+    cq: IndustryTrendBuckets;
+    ncq: IndustryTrendBuckets;
   };
   cq: {
     saleBreakdown: SimpleCount[];
@@ -414,7 +421,8 @@ function buildIndustryTrends(
   dateIdx: number,
   industryIdx: number,
   statusIdx: number,
-  normalizer: (value: RawCell) => string
+  normalizer: (value: RawCell) => string,
+  lookbackDays?: number
 ): IndustryTrendRow[] {
   const datedRows = data
     .map((row) => ({ row, date: parseDate(row[dateIdx]) }))
@@ -431,6 +439,12 @@ function buildIndustryTrends(
     ? isoWeekKey(new Date(latestDate.getTime() - 7 * 86400000))
     : null;
 
+  const windowStartMs =
+    latestDate && lookbackDays
+      ? new Date(latestDate.getFullYear(), latestDate.getMonth(), latestDate.getDate()).getTime() -
+        (lookbackDays - 1) * 86400000
+      : null;
+
   const stats: Record<
     string,
     {
@@ -444,6 +458,13 @@ function buildIndustryTrends(
   > = {};
 
   for (const row of data) {
+    const rowDate = parseDate(row[dateIdx]);
+    if (windowStartMs !== null) {
+      if (!rowDate || rowDate.getTime() < windowStartMs) {
+        continue;
+      }
+    }
+
     const industry = normalizeIndustryName(row[industryIdx]);
     if (!stats[industry]) {
       stats[industry] = {
@@ -464,7 +485,6 @@ function buildIndustryTrends(
       bucket.success += 1;
     }
 
-    const rowDate = parseDate(row[dateIdx]);
     if (rowDate && latestDayKey && prevDayKey && latestWeekKey && prevWeekKey) {
       const rowDayKey = dayKey(rowDate);
       if (rowDayKey === latestDayKey) bucket.dayCount += 1;
@@ -489,6 +509,20 @@ function buildIndustryTrends(
     .sort((a, b) => b.total - a.total);
 }
 
+function buildIndustryTrendBuckets(
+  data: RawRow[],
+  dateIdx: number,
+  industryIdx: number,
+  statusIdx: number,
+  normalizer: (value: RawCell) => string
+): IndustryTrendBuckets {
+  return {
+    d7: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer, 7),
+    d30: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer, 30),
+    d90: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer, 90),
+    all: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer)
+  };
+}
 function cleanRows(rows: RawRow[], keyIndex: number) {
   return rows.filter((row) => cellToString(row[keyIndex]) !== "");
 }
@@ -881,8 +915,8 @@ function buildPayload(
       }
     },
     industry: {
-      cq: buildIndustryTrends(cqData, 0, 7, 33, normalizeStatus),
-      ncq: buildIndustryTrends(ncqData, 0, 8, 9, normalizeStatus)
+      cq: buildIndustryTrendBuckets(cqData, 0, 7, 33, normalizeStatus),
+      ncq: buildIndustryTrendBuckets(ncqData, 0, 8, 9, normalizeStatus)
     },
     cq: {
       saleBreakdown: countBy(cqData, 3),
@@ -917,6 +951,8 @@ export async function getDashboardData() {
 
   return buildPayload(buildDemoDataset(), true);
 }
+
+
 
 
 

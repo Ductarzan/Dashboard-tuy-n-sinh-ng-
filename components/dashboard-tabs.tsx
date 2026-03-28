@@ -13,6 +13,7 @@ import type { getDashboardData } from "@/lib/dashboard-data";
 
 type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
 type TabKey = "online" | "offline";
+type IndustryDaysKey = "d7" | "d30" | "d90" | "all";
 
 const tabs: Array<{ key: TabKey; label: string; description: string }> = [
   {
@@ -29,6 +30,8 @@ const tabs: Array<{ key: TabKey; label: string; description: string }> = [
 
 export function DashboardTabs({ data }: { data: DashboardData }) {
   const [active, setActive] = useState<TabKey>("online");
+  const [industryDays, setIndustryDays] = useState<IndustryDaysKey>("d30");
+  const [industryPeriod, setIndustryPeriod] = useState<"day" | "week">("week");
 
   return (
     <section className="tabs-shell">
@@ -84,6 +87,11 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                     rows={data.details.cq.interestBreakdown}
                     total={data.details.cq.totalInterestCells}
                   />
+                  <SimpleBarTable
+                    title="Cơ cấu nguồn phát sinh"
+                    rows={data.details.cq.sourceBreakdown}
+                    total={data.summary.cqTotal}
+                  />
                   <p className="detail-note">
                     Đã loại {data.details.cq.blankInterestCells} ô trống tại `Nguyện vọng 01` và `Nguyện vọng 02` để tránh làm lệch tỷ trọng.
                   </p>
@@ -111,11 +119,73 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
             <section className="detail-section">
               <SectionHeading
                 title="Thống kê tất cả ngành theo hệ"
-                subtitle="Theo dõi biến động ngày/tuần và tỷ lệ chuyển đổi theo ngành"
+                subtitle="Theo dõi biến động theo days/period và tỷ lệ chuyển đổi theo ngành"
               />
+              <div className="industry-toolbar">
+                <div className="segmented" role="tablist" aria-label="Khoảng ngày thống kê">
+                  <button
+                    type="button"
+                    className="segmented-button"
+                    data-active={industryDays === "d7"}
+                    onClick={() => setIndustryDays("d7")}
+                  >
+                    7D
+                  </button>
+                  <button
+                    type="button"
+                    className="segmented-button"
+                    data-active={industryDays === "d30"}
+                    onClick={() => setIndustryDays("d30")}
+                  >
+                    30D
+                  </button>
+                  <button
+                    type="button"
+                    className="segmented-button"
+                    data-active={industryDays === "d90"}
+                    onClick={() => setIndustryDays("d90")}
+                  >
+                    90D
+                  </button>
+                  <button
+                    type="button"
+                    className="segmented-button"
+                    data-active={industryDays === "all"}
+                    onClick={() => setIndustryDays("all")}
+                  >
+                    ALL
+                  </button>
+                </div>
+                <div className="segmented" role="tablist" aria-label="Chu kỳ so sánh">
+                  <button
+                    type="button"
+                    className="segmented-button"
+                    data-active={industryPeriod === "day"}
+                    onClick={() => setIndustryPeriod("day")}
+                  >
+                    Theo ngày
+                  </button>
+                  <button
+                    type="button"
+                    className="segmented-button"
+                    data-active={industryPeriod === "week"}
+                    onClick={() => setIndustryPeriod("week")}
+                  >
+                    Theo tuần
+                  </button>
+                </div>
+              </div>
               <div className="detail-grid detail-grid--two">
-                <IndustryTable title="CQ: Ngành (Nguyện vọng 01)" rows={data.industry.cq} />
-                <IndustryTable title="NCQ: Ngành" rows={data.industry.ncq} />
+                <IndustryTable
+                  title="CQ: Ngành (Nguyện vọng 01)"
+                  rows={data.industry.cq[industryDays]}
+                  period={industryPeriod}
+                />
+                <IndustryTable
+                  title="NCQ: Ngành"
+                  rows={data.industry.ncq[industryDays]}
+                  period={industryPeriod}
+                />
               </div>
             </section>
 
@@ -275,4 +345,3 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
     </section>
   );
 }
-

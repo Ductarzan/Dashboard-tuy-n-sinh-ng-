@@ -195,11 +195,15 @@ function formatTrend(value: number | null) {
 
 export function IndustryTable({
   title,
-  rows
+  rows,
+  period
 }: {
   title: string;
   rows: IndustryTrendRow[];
+  period: "day" | "week";
 }) {
+  const periodLabel = period === "day" ? "so với hôm qua" : "so với tuần trước";
+
   return (
     <section className="subpanel">
       <h3>{title}</h3>
@@ -209,8 +213,7 @@ export function IndustryTable({
             <tr>
               <th>Ngành</th>
               <th>Tổng leads</th>
-              <th>% so với hôm qua</th>
-              <th>% so với tuần trước</th>
+              <th>% {periodLabel}</th>
               <th>Tỷ lệ conversion</th>
             </tr>
           </thead>
@@ -219,8 +222,7 @@ export function IndustryTable({
               <tr key={row.name}>
                 <td>{row.name}</td>
                 <td>{row.total}</td>
-                <td>{formatTrend(row.dayChangePct)}</td>
-                <td>{formatTrend(row.weekChangePct)}</td>
+                <td>{formatTrend(period === "day" ? row.dayChangePct : row.weekChangePct)}</td>
                 <td>{row.conversionRate.toFixed(1)}%</td>
               </tr>
             ))}
