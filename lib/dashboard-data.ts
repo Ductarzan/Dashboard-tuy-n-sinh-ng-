@@ -1,4 +1,4 @@
-import { unstable_noStore as noStore } from "next/cache";
+﻿import { unstable_noStore as noStore } from "next/cache";
 import { google } from "googleapis";
 
 type RawCell = string | number | boolean | null;
@@ -158,14 +158,69 @@ function normalizeStatus(value: RawCell) {
   return "Trạng thái lẻ tẻ khác";
 }
 
-function countBy(data: RawRow[], columnIndex: number, isStatus: boolean) {
+function normalizeOfflineStatus(value: RawCell) {
+  if (!cellToString(value)) return "5. Chưa liên hệ";
+  const str = cellToString(value).toLowerCase();
+
+  if (str.includes("đã nhập học") || str.includes("da nhap hoc")) {
+    return "1. Thành công";
+  }
+  if (
+    str.includes("tiềm năng") ||
+    str.includes("tienm nang") ||
+    str.includes("tư vấn") ||
+    str.includes("tư vẫn") ||
+    str.includes("tu van") ||
+    str.includes("đã nộp hs") ||
+    str.includes("da nop hs") ||
+    str.includes("nộp hồ sơ")
+  ) {
+    return "2. Tiềm năng";
+  }
+  if (
+    str.includes("đã liên hệ") ||
+    str.includes("da lien he") ||
+    str.includes("không nghe máy") ||
+    str.includes("khong nghe may") ||
+    str.includes("thuê bao") ||
+    str.includes("thue bao")
+  ) {
+    return "3. Đang xử lý";
+  }
+  if (
+    str.includes("không có nhu cầu") ||
+    str.includes("khong co nhu cau") ||
+    str.includes("đã rút") ||
+    str.includes("da rut") ||
+    str.includes("sai số") ||
+    str.includes("sai so")
+  ) {
+    return "4. K.H hỏng";
+  }
+
+  return "3. Đang xử lý";
+}
+
+function countByStatus(data: RawRow[], columnIndex: number, normalizer: (value: RawCell) => string) {
   const result: Record<string, number> = {};
 
   for (const row of data) {
     const value = row[columnIndex];
-    const key = isStatus
-      ? normalizeStatus(value)
-      : cellToString(value) || "Chưa phân bổ NV";
+    const key = normalizer(value);
+    result[key] = (result[key] || 0) + 1;
+  }
+
+  return Object.entries(result)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function countBy(data: RawRow[], columnIndex: number) {
+  const result: Record<string, number> = {};
+
+  for (const row of data) {
+    const value = row[columnIndex];
+    const key = cellToString(value) || "Chưa phân bổ NV";
     result[key] = (result[key] || 0) + 1;
   }
 
@@ -250,12 +305,17 @@ function buildRelationInterest(
     .sort((a, b) => b.total - a.total);
 }
 
-function buildSaleMatrix(data: RawRow[], saleColIdx: number, statusColIdx: number) {
+function buildSaleMatrix(
+  data: RawRow[],
+  saleColIdx: number,
+  statusColIdx: number,
+  normalizer: (value: RawCell) => string
+) {
   const result: Record<string, MatrixCount> = {};
 
   for (const row of data) {
     const sale = cellToString(row[saleColIdx]) || "Chưa phân bổ NV";
-    const statusGroup = normalizeStatus(row[statusColIdx]);
+    const statusGroup = normalizer(row[statusColIdx]);
 
     if (!result[sale]) {
       result[sale] = {
@@ -272,21 +332,14 @@ function buildSaleMatrix(data: RawRow[], saleColIdx: number, statusColIdx: numbe
 
     if (statusGroup.startsWith("1.") || statusGroup.startsWith("2.")) {
       result[sale].thanhCong += 1;
-    } else if (
-      statusGroup.startsWith("3.") ||
-      statusGroup.startsWith("4.") ||
-      statusGroup.startsWith("5.") ||
-      statusGroup.startsWith("6.")
-    ) {
+    } else if (statusGroup.startsWith("3.")) {
       result[sale].dangXuLy += 1;
-    } else if (
-      statusGroup.startsWith("7.") ||
-      statusGroup.startsWith("8.") ||
-      statusGroup.startsWith("9.")
-    ) {
+    } else if (statusGroup.startsWith("4.")) {
       result[sale].thatBai += 1;
-    } else {
+    } else if (statusGroup.startsWith("5.")) {
       result[sale].chuaLH += 1;
+    } else {
+      result[sale].dangXuLy += 1;
     }
   }
 
@@ -336,7 +389,7 @@ function buildSelfManaged(rows: RawRow[]) {
 function buildInterestByColumn(data: RawRow[], interestColumns: number[], sourceColumn?: number) {
   const interest = countMultipleColumns(data, interestColumns);
   const sourceBreakdown =
-    sourceColumn === undefined ? [] : countBy(data, sourceColumn, false).slice(0, 7);
+    sourceColumn === undefined ? [] : countBy(data, sourceColumn).slice(0, 7);
 
   return {
     interestBreakdown: interest.rows,
@@ -383,12 +436,222 @@ async function loadFromGoogleSheets() {
 
 function buildDemoDataset(): Record<(typeof sheetNames)[number], unknown[][]> {
   const cqRows = [
-    ["Lead", "Phone", "Student", "Sale", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "Status"],
-    ["1", "", "Nguyen A", "Sale Lan", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "Đã nhập học"],
-    ["2", "", "Nguyen B", "Sale Lan", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "Đã LH, nghe máy"],
-    ["3", "", "Nguyen C", "Sale Minh", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "Không nghe máy"],
-    ["4", "", "Nguyen D", "Sale Minh", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "Nộp hồ sơ"],
-    ["5", "", "Nguyen E", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
+    [
+      "Lead",
+      "Phone",
+      "Student",
+      "Sale",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "Status"
+    ],
+    [
+      "1",
+      "",
+      "Nguyen A",
+      "Sale Lan",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "Đã nhập học"
+    ],
+    [
+      "2",
+      "",
+      "Nguyen B",
+      "Sale Lan",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "Đã LH, nghe máy"
+    ],
+    [
+      "3",
+      "",
+      "Nguyen C",
+      "Sale Minh",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "Không nghe máy"
+    ],
+    [
+      "4",
+      "",
+      "Nguyen D",
+      "Sale Minh",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "Nộp hồ sơ"
+    ],
+    [
+      "5",
+      "",
+      "Nguyen E",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
   ];
 
   const ncqRows = [
@@ -399,10 +662,21 @@ function buildDemoDataset(): Record<(typeof sheetNames)[number], unknown[][]> {
   ];
 
   const offlineRows = [
-    ["Lead", "Student", "x", "x", "x", "x", "x", "x", "x", "Sale", "Status"],
-    ["1", "Offline 1", "", "", "", "", "", "", "", "Sale Hung", "Phụ huynh phản hồi"],
-    ["2", "Offline 2", "", "", "", "", "", "", "", "Sale Hung", "Sai số"],
-    ["3", "Offline 3", "", "", "", "", "", "", "", "", ""]
+    [
+      "Lead",
+      "Student",
+      "x",
+      "x",
+      "Status",
+      "x",
+      "Nguyện vọng 01",
+      "Nguyện vọng 02",
+      "x",
+      "Sale"
+    ],
+    ["1", "Offline 1", "", "", "Đã nhập học", "", "CNTT", "", "", "Sale Hung"],
+    ["2", "Offline 2", "", "", "Không nghe máy, thuê bao", "", "Dược", "", "", "Sale Hung"],
+    ["3", "Offline 3", "", "", "", "", "", "", "", ""]
   ];
 
   const tuChuRows = [
@@ -420,7 +694,10 @@ function buildDemoDataset(): Record<(typeof sheetNames)[number], unknown[][]> {
   };
 }
 
-function buildPayload(rawData: Record<(typeof sheetNames)[number], unknown[][]>, isDemo: boolean): DashboardPayload {
+function buildPayload(
+  rawData: Record<(typeof sheetNames)[number], unknown[][]>,
+  isDemo: boolean
+): DashboardPayload {
   const cqData = cleanRows(toRows(rawData.CQ_Status), 2);
   const ncqData = cleanRows(toRows(rawData.NCQ_Status), 3);
   const offlineData = cleanRows(toRows(rawData.Offline_Status), 1);
@@ -459,19 +736,19 @@ function buildPayload(rawData: Record<(typeof sheetNames)[number], unknown[][]>,
       }
     },
     cq: {
-      saleBreakdown: countBy(cqData, 3, false),
-      statusBreakdown: countBy(cqData, 33, true),
-      matrix: buildSaleMatrix(cqData, 3, 33)
+      saleBreakdown: countBy(cqData, 3),
+      statusBreakdown: countByStatus(cqData, 33, normalizeStatus),
+      matrix: buildSaleMatrix(cqData, 3, 33, normalizeStatus)
     },
     ncq: {
-      saleBreakdown: countBy(ncqData, 2, false),
-      statusBreakdown: countBy(ncqData, 9, true),
-      matrix: buildSaleMatrix(ncqData, 2, 9)
+      saleBreakdown: countBy(ncqData, 2),
+      statusBreakdown: countByStatus(ncqData, 9, normalizeStatus),
+      matrix: buildSaleMatrix(ncqData, 2, 9, normalizeStatus)
     },
     offline: {
-      saleBreakdown: countBy(offlineData, 9, false),
-      statusBreakdown: countBy(offlineData, 10, true),
-      matrix: buildSaleMatrix(offlineData, 9, 10)
+      saleBreakdown: countBy(offlineData, 9),
+      statusBreakdown: countByStatus(offlineData, 4, normalizeOfflineStatus),
+      matrix: buildSaleMatrix(offlineData, 9, 4, normalizeOfflineStatus)
     },
     selfManaged
   };
