@@ -354,9 +354,39 @@ function buildSaleMatrix(
 
 function parseDate(value: RawCell): Date | null {
   if (value === null || value === undefined || value === "") return null;
-  const input =
-    typeof value === "number" ? value : typeof value === "string" ? value : String(value);
-  const date = new Date(input);
+
+  if (typeof value === "number") {
+    // Google Sheets / Excel serial date number.
+    const serialDate = new Date(Math.round((value - 25569) * 86400 * 1000));
+    if (!Number.isNaN(serialDate.getTime())) return serialDate;
+  }
+
+  const text = typeof value === "string" ? value.trim() : String(value).trim();
+  if (!text) return null;
+
+  const asNumber = Number(text);
+  if (!Number.isNaN(asNumber) && /^\d+(\.\d+)?$/.test(text)) {
+    const serialDate = new Date(Math.round((asNumber - 25569) * 86400 * 1000));
+    if (!Number.isNaN(serialDate.getTime())) return serialDate;
+  }
+
+  const viMatch = text.match(
+    /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+  );
+  if (viMatch) {
+    const day = Number(viMatch[1]);
+    const month = Number(viMatch[2]);
+    const yearRaw = Number(viMatch[3]);
+    const year = yearRaw < 100 ? 2000 + yearRaw : yearRaw;
+    const hour = Number(viMatch[4] || 0);
+    const minute = Number(viMatch[5] || 0);
+    const second = Number(viMatch[6] || 0);
+
+    const viDate = new Date(year, month - 1, day, hour, minute, second);
+    if (!Number.isNaN(viDate.getTime())) return viDate;
+  }
+
+  const date = new Date(text);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -951,6 +981,7 @@ export async function getDashboardData() {
 
   return buildPayload(buildDemoDataset(), true);
 }
+
 
 
 
