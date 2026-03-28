@@ -430,3 +430,86 @@ a {
     line-height: 1;
   }
 }
+
+.detail-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detail-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.relation-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.relation-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tabs-shell {
+  margin-top: 22px;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.tab-button {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+  transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.tab-button span {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.tab-button small {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.tab-button[data-active="true"] {
+  background: rgba(15, 76, 129, 0.1);
+  border-color: rgba(15, 76, 129, 0.3);
+  box-shadow: 0 12px 28px rgba(15, 76, 129, 0.18);
+}
+
+.tab-button:focus-visible {
+  outline: 2px solid rgba(15, 76, 129, 0.6);
+  outline-offset: 2px;
+}
+
+.tab-panel {
+  margin-top: 22px;
+}
+
+.tab-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .tabs {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,4 +1,4 @@
-type SimpleRow = {
+﻿type SimpleRow = {
   name: string;
   count: number;
 };

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Merriweather, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 
