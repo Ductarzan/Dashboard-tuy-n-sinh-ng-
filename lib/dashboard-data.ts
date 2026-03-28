@@ -360,7 +360,7 @@ function buildSaleMatrix(
 
 function parseDate(value: RawCell) {
   if (!value) return null;
-  if (typeof value === "object" && value instanceof Date) return value;
+  if ((value as any) instanceof Date) return value;
   const date = new Date(value as string);
   return Number.isNaN(date.getTime()) ? null : date;
 }
