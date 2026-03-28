@@ -462,35 +462,41 @@ function buildIndustryTrends(
     ? new Date(Math.max(...datedRows.map((item) => item.date.getTime())))
     : null;
 
-  const latestDayKey = latestDate ? dayKey(latestDate) : null;
-  const prevDayKey = latestDate ? dayKey(new Date(latestDate.getTime() - 86400000)) : null;
   const latestWeekKey = latestDate ? isoWeekKey(latestDate) : null;
   const prevWeekKey = latestDate
     ? isoWeekKey(new Date(latestDate.getTime() - 7 * 86400000))
     : null;
 
-  const windowStartMs =
-    latestDate && lookbackDays
+  const windowDays = lookbackDays ?? null;
+  const currentWindowEndMs = latestDate ? latestDate.getTime() : null;
+  const currentWindowStartMs =
+    latestDate && windowDays
       ? new Date(latestDate.getFullYear(), latestDate.getMonth(), latestDate.getDate()).getTime() -
-        (lookbackDays - 1) * 86400000
+        (windowDays - 1) * 86400000
       : null;
+  const prevWindowEndMs = currentWindowStartMs !== null ? currentWindowStartMs - 1 : null;
+  const prevWindowStartMs =
+    prevWindowEndMs !== null && windowDays ? prevWindowEndMs - (windowDays - 1) * 86400000 : null;
 
   const stats: Record<
     string,
     {
       total: number;
       success: number;
-      dayCount: number;
-      prevDayCount: number;
+      currentWindowCount: number;
+      prevWindowCount: number;
       weekCount: number;
       prevWeekCount: number;
     }
   > = {};
 
-  for (const row of data) {
-    const rowDate = parseDate(row[dateIdx]);
-    if (windowStartMs !== null) {
-      if (!rowDate || rowDate.getTime() < windowStartMs) {
+  for (const item of datedRows) {
+    const row = item.row;
+    const rowDate = item.date;
+
+    if (currentWindowStartMs !== null && currentWindowEndMs !== null) {
+      const ts = rowDate.getTime();
+      if (ts < currentWindowStartMs || ts > currentWindowEndMs) {
         continue;
       }
     }
@@ -500,8 +506,8 @@ function buildIndustryTrends(
       stats[industry] = {
         total: 0,
         success: 0,
-        dayCount: 0,
-        prevDayCount: 0,
+        currentWindowCount: 0,
+        prevWindowCount: 0,
         weekCount: 0,
         prevWeekCount: 0
       };
@@ -509,20 +515,30 @@ function buildIndustryTrends(
 
     const bucket = stats[industry];
     bucket.total += 1;
+    bucket.currentWindowCount += 1;
 
     const statusGroup = normalizer(row[statusIdx]);
     if (statusGroup.startsWith("1.")) {
       bucket.success += 1;
     }
 
-    if (rowDate && latestDayKey && prevDayKey && latestWeekKey && prevWeekKey) {
-      const rowDayKey = dayKey(rowDate);
-      if (rowDayKey === latestDayKey) bucket.dayCount += 1;
-      if (rowDayKey === prevDayKey) bucket.prevDayCount += 1;
-
+    if (latestWeekKey && prevWeekKey) {
       const rowWeekKey = isoWeekKey(rowDate);
       if (rowWeekKey === latestWeekKey) bucket.weekCount += 1;
       if (rowWeekKey === prevWeekKey) bucket.prevWeekCount += 1;
+    }
+  }
+
+  if (prevWindowStartMs !== null && prevWindowEndMs !== null) {
+    for (const item of datedRows) {
+      const rowDate = item.date;
+      const ts = rowDate.getTime();
+      if (ts < prevWindowStartMs || ts > prevWindowEndMs) continue;
+
+      const industry = normalizeIndustryName(item.row[industryIdx]);
+      const bucket = stats[industry];
+      if (!bucket) continue;
+      bucket.prevWindowCount += 1;
     }
   }
 
@@ -531,14 +547,15 @@ function buildIndustryTrends(
       name,
       total: item.total,
       dayChangePct:
-        item.prevDayCount > 0 ? ((item.dayCount - item.prevDayCount) / item.prevDayCount) * 100 : null,
+        item.prevWindowCount > 0
+          ? ((item.currentWindowCount - item.prevWindowCount) / item.prevWindowCount) * 100
+          : null,
       weekChangePct:
         item.prevWeekCount > 0 ? ((item.weekCount - item.prevWeekCount) / item.prevWeekCount) * 100 : null,
       conversionRate: item.total > 0 ? (item.success / item.total) * 100 : 0
     }))
     .sort((a, b) => b.total - a.total);
 }
-
 function buildIndustryTrendBuckets(
   data: RawRow[],
   dateIdx: number,
@@ -981,6 +998,7 @@ export async function getDashboardData() {
 
   return buildPayload(buildDemoDataset(), true);
 }
+
 
 
 
