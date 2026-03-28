@@ -209,12 +209,17 @@ function countByStatus(data: RawRow[], columnIndex: number, normalizer: (value: 
     .sort((a, b) => b.count - a.count);
 }
 
-function countBy(data: RawRow[], columnIndex: number) {
+function countBy(
+  data: RawRow[],
+  columnIndex: number,
+  normalizer?: (value: RawCell) => string,
+  emptyLabel = "Chưa phân bổ NV"
+) {
   const result: Record<string, number> = {};
 
   for (const row of data) {
     const value = row[columnIndex];
-    const key = cellToString(value) || "Chưa phân bổ NV";
+    const key = normalizer ? normalizer(value) : cellToString(value) || emptyLabel;
     result[key] = (result[key] || 0) + 1;
   }
 
@@ -361,6 +366,23 @@ function isoWeekKey(date: Date) {
   return `${tmp.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
+function normalizeSourceName(value: RawCell) {
+  const raw = cellToString(value);
+  if (!raw) return "Chưa có nguồn";
+
+  const normalized = raw.replace(/\s+/g, " ").trim();
+  const key = normalized.toLocaleLowerCase("vi-VN");
+
+  const aliases: Record<string, string> = {
+    "fb ads": "Facebook ADS",
+    "facebook ads": "Facebook ADS",
+    "facebook ad": "Facebook ADS",
+    "fbad": "Facebook ADS",
+    "facebook": "Facebook ADS"
+  };
+
+  return aliases[key] || normalized;
+}
 function normalizeIndustryName(value: RawCell) {
   const raw = cellToString(value);
   if (!raw) return "Chưa có ngành";
@@ -510,7 +532,9 @@ function buildSelfManaged(rows: RawRow[]) {
 function buildInterestByColumn(data: RawRow[], interestColumns: number[], sourceColumn?: number) {
   const interest = countMultipleColumns(data, interestColumns);
   const sourceBreakdown =
-    sourceColumn === undefined ? [] : countBy(data, sourceColumn).slice(0, 7);
+    sourceColumn === undefined
+      ? []
+      : countBy(data, sourceColumn, normalizeSourceName, "Chưa có nguồn").slice(0, 7);
 
   return {
     interestBreakdown: interest.rows,
@@ -893,6 +917,9 @@ export async function getDashboardData() {
 
   return buildPayload(buildDemoDataset(), true);
 }
+
+
+
 
 
 
