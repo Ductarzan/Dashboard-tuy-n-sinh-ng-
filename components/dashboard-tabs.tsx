@@ -38,6 +38,14 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
   const safeIndustryPage = Math.min(industryPage, totalIndustryPages - 1);
   const startIndex = safeIndustryPage * industryPageSize;
   const visibleIndustryDays = allIndustryDays.slice(startIndex, startIndex + industryPageSize);
+  const fbRows = data.fbAds.byDay.slice(0, 60);
+
+  const currency = new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0
+  });
+  const numberFmt = new Intl.NumberFormat("vi-VN");
 
   return (
     <section className="tabs-shell">
@@ -78,6 +86,81 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
               />
               <StatusPieChart title="Phễu trạng thái CQ" rows={data.cq.statusBreakdown} />
               <TopSalesChart title="Top sale CQ theo tiến độ xử lý" rows={data.cq.matrix} />
+            </section>
+
+            <section className="detail-section">
+              <SectionHeading
+                title="Facebook Ads: Tổng chi tiêu và chỉ số theo ngày"
+                subtitle="Gộp dữ liệu từ tất cả tài khoản quảng cáo đã cấu hình trong hệ thống"
+              />
+              <div className="fb-metric-grid">
+                <article className="fb-metric-card">
+                  <p>Tổng tiền đã chạy</p>
+                  <strong>{currency.format(data.fbAds.totals.spendAllTime)}</strong>
+                </article>
+                <article className="fb-metric-card">
+                  <p>Tổng tiền hôm qua</p>
+                  <strong>{currency.format(data.fbAds.totals.spendYesterday)}</strong>
+                </article>
+                <article className="fb-metric-card">
+                  <p>Tổng tiền hôm nay</p>
+                  <strong>{currency.format(data.fbAds.totals.spendToday)}</strong>
+                </article>
+                <article className="fb-metric-card">
+                  <p>FB mess (all-time)</p>
+                  <strong>{numberFmt.format(data.fbAds.totals.messagesAllTime)}</strong>
+                </article>
+                <article className="fb-metric-card">
+                  <p>Clicks (all-time)</p>
+                  <strong>{numberFmt.format(data.fbAds.totals.clicksAllTime)}</strong>
+                </article>
+                <article className="fb-metric-card">
+                  <p>Reach (all-time)</p>
+                  <strong>{numberFmt.format(data.fbAds.totals.reachAllTime)}</strong>
+                </article>
+                <article className="fb-metric-card">
+                  <p>Impressions (all-time)</p>
+                  <strong>{numberFmt.format(data.fbAds.totals.impressionsAllTime)}</strong>
+                </article>
+              </div>
+              <div className="subpanel">
+                <h3>Theo ngày (toàn bộ thời gian chạy)</h3>
+                <p className="detail-note">
+                  Tài khoản đang gộp: {data.fbAds.accountIds.length}. Hiển thị {fbRows.length} ngày gần nhất.
+                </p>
+                {data.fbAds.error ? <p className="detail-note">Lỗi Facebook Ads: {data.fbAds.error}</p> : null}
+                <div className="table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Ngày</th>
+                        <th>Chi tiêu</th>
+                        <th>FB mess</th>
+                        <th>Click</th>
+                        <th>Reach</th>
+                        <th>Impressions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fbRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={6}>Chưa có dữ liệu Facebook Ads theo ngày.</td>
+                        </tr>
+                      ) : null}
+                      {fbRows.map((row) => (
+                        <tr key={row.date}>
+                          <td>{row.date}</td>
+                          <td>{currency.format(row.spend)}</td>
+                          <td>{numberFmt.format(row.messages)}</td>
+                          <td>{numberFmt.format(row.clicks)}</td>
+                          <td>{numberFmt.format(row.reach)}</td>
+                          <td>{numberFmt.format(row.impressions)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </section>
 
             <section className="detail-section">
@@ -140,6 +223,20 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                   >
                     Prev
                   </button>
+                  <label className="pager-select-wrap">
+                    <span>Trang</span>
+                    <select
+                      className="pager-select"
+                      value={safeIndustryPage}
+                      onChange={(event) => setIndustryPage(Number(event.target.value))}
+                    >
+                      {Array.from({ length: totalIndustryPages }, (_, index) => (
+                        <option key={index} value={index}>
+                          {index + 1}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <span>
                     Trang {safeIndustryPage + 1}/{totalIndustryPages}
                   </span>
