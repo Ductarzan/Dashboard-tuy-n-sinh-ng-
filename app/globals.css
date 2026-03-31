@@ -359,6 +359,11 @@ a {
   font-weight: 700;
 }
 
+.data-table .summary-row td {
+  font-weight: 800;
+  background: rgba(15, 76, 129, 0.08);
+}
+
 .heatmap-table {
   width: 100%;
   border-collapse: collapse;

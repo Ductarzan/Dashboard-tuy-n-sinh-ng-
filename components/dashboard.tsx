@@ -201,6 +201,11 @@ export function IndustryTable({
   rows: IndustryTimelineRow[];
   visibleDays: string[];
 }) {
+  const totalSum = rows.reduce((sum, row) => sum + row.total, 0);
+  const totalsByDay = Object.fromEntries(
+    visibleDays.map((day) => [day, rows.reduce((sum, row) => sum + (row.dailyCounts[day] || 0), 0)])
+  ) as Record<string, number>;
+
   return (
     <section className="subpanel">
       <h3>{title}</h3>
@@ -227,6 +232,14 @@ export function IndustryTable({
                 <td>{row.conversionRate.toFixed(1)}%</td>
               </tr>
             ))}
+            <tr className="summary-row">
+              <td>Tổng theo ngày</td>
+              <td>{totalSum}</td>
+              {visibleDays.map((day) => (
+                <td key={day}>{totalsByDay[day] || 0}</td>
+              ))}
+              <td>-</td>
+            </tr>
           </tbody>
         </table>
       </div>
