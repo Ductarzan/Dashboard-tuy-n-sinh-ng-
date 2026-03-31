@@ -108,10 +108,6 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                   <strong>{currency.format(data.fbAds.totals.spendYesterday)}</strong>
                 </article>
                 <article className="fb-metric-card">
-                  <p>Tổng tiền hôm nay</p>
-                  <strong>{currency.format(data.fbAds.totals.spendToday)}</strong>
-                </article>
-                <article className="fb-metric-card">
                   <p>FB mess (all-time)</p>
                   <strong>{numberFmt.format(data.fbAds.totals.messagesAllTime)}</strong>
                 </article>
