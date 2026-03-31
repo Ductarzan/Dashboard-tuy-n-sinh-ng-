@@ -50,6 +50,8 @@ type FbDailyInsight = {
   clicks: number;
   reach: number;
   impressions: number;
+  cqLeads: number;
+  ncqLeads: number;
 };
 
 type FbAdsPayload = {
@@ -63,6 +65,8 @@ type FbAdsPayload = {
     clicksAllTime: number;
     reachAllTime: number;
     impressionsAllTime: number;
+    cqLeadsAllTime: number;
+    ncqLeadsAllTime: number;
   };
   byDay: FbDailyInsight[];
   error: string | null;
@@ -420,6 +424,19 @@ function dayKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function countRowsByDay(data: RawRow[], dateIdx: number) {
+  const result: Record<string, number> = {};
+
+  for (const row of data) {
+    const date = parseDate(row[dateIdx]);
+    if (!date) continue;
+    const key = dayKey(date);
+    result[key] = (result[key] || 0) + 1;
+  }
+
+  return result;
+}
+
 function normalizeSourceName(value: RawCell) {
   const raw = cellToString(value);
   if (!raw) return "Chưa có nguồn";
@@ -700,7 +717,9 @@ async function buildFbAdsPayload(timezone: string): Promise<FbAdsPayload> {
         messagesAllTime: 0,
         clicksAllTime: 0,
         reachAllTime: 0,
-        impressionsAllTime: 0
+        impressionsAllTime: 0,
+        cqLeadsAllTime: 0,
+        ncqLeadsAllTime: 0
       },
       byDay: [],
       error: `Thiếu biến môi trường: ${missing.join(", ")}.`
@@ -725,7 +744,9 @@ async function buildFbAdsPayload(timezone: string): Promise<FbAdsPayload> {
             messages: 0,
             clicks: 0,
             reach: 0,
-            impressions: 0
+            impressions: 0,
+            cqLeads: 0,
+            ncqLeads: 0
           };
         }
 
@@ -768,7 +789,9 @@ async function buildFbAdsPayload(timezone: string): Promise<FbAdsPayload> {
         messagesAllTime: 0,
         clicksAllTime: 0,
         reachAllTime: 0,
-        impressionsAllTime: 0
+        impressionsAllTime: 0,
+        cqLeadsAllTime: 0,
+        ncqLeadsAllTime: 0
       }
     );
 
@@ -790,7 +813,9 @@ async function buildFbAdsPayload(timezone: string): Promise<FbAdsPayload> {
         messagesAllTime: 0,
         clicksAllTime: 0,
         reachAllTime: 0,
-        impressionsAllTime: 0
+        impressionsAllTime: 0,
+        cqLeadsAllTime: 0,
+        ncqLeadsAllTime: 0
       },
       byDay: [],
       error: error instanceof Error ? error.message : "Không thể tải dữ liệu Facebook Ads."
@@ -1107,6 +1132,37 @@ function buildPayload(
   const ncqTotal = ncqData.length;
   const offlineTotal = offlineData.length;
   const selfManagedTotal = selfManaged.totalCQ + selfManaged.totalNCQ;
+  const fbStartDate = process.env.FB_ADS_START_DATE?.trim() || "2026-03-21";
+  const cqLeadsByDay = countRowsByDay(cqData, 0);
+  const ncqLeadsByDay = countRowsByDay(ncqData, 0);
+  const fbByDayMap = Object.fromEntries(fbAds.byDay.map((item) => [item.date, item]));
+  const allDays = Array.from(
+    new Set([...Object.keys(fbByDayMap), ...Object.keys(cqLeadsByDay), ...Object.keys(ncqLeadsByDay)])
+  )
+    .filter((day) => day >= fbStartDate)
+    .sort((a, b) => b.localeCompare(a));
+  const mergedFbByDay = allDays.map((day) => {
+    const base = fbByDayMap[day];
+    return {
+      date: day,
+      spend: base?.spend || 0,
+      messages: base?.messages || 0,
+      clicks: base?.clicks || 0,
+      reach: base?.reach || 0,
+      impressions: base?.impressions || 0,
+      cqLeads: cqLeadsByDay[day] || 0,
+      ncqLeads: ncqLeadsByDay[day] || 0
+    };
+  });
+  const mergedFbAds: FbAdsPayload = {
+    ...fbAds,
+    byDay: mergedFbByDay,
+    totals: {
+      ...fbAds.totals,
+      cqLeadsAllTime: mergedFbByDay.reduce((sum, item) => sum + item.cqLeads, 0),
+      ncqLeadsAllTime: mergedFbByDay.reduce((sum, item) => sum + item.ncqLeads, 0)
+    }
+  };
 
   return {
     generatedAt: new Date().toISOString(),
@@ -1155,7 +1211,7 @@ function buildPayload(
       matrix: buildSaleMatrix(offlineData, 9, 4, normalizeOfflineStatus)
     },
     selfManaged,
-    fbAds
+    fbAds: mergedFbAds
   };
 }
 

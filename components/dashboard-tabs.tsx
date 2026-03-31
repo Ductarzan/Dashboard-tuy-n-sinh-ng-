@@ -127,6 +127,14 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                   <p>Impressions (all-time)</p>
                   <strong>{numberFmt.format(data.fbAds.totals.impressionsAllTime)}</strong>
                 </article>
+                <article className="fb-metric-card">
+                  <p>Tổng Lead CQ</p>
+                  <strong>{numberFmt.format(data.fbAds.totals.cqLeadsAllTime)}</strong>
+                </article>
+                <article className="fb-metric-card">
+                  <p>Tổng Lead NCQ</p>
+                  <strong>{numberFmt.format(data.fbAds.totals.ncqLeadsAllTime)}</strong>
+                </article>
               </div>
               <div className="subpanel">
                 <h3>Theo ngày (toàn bộ thời gian chạy)</h3>
@@ -179,12 +187,14 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                         <th>Click</th>
                         <th>Reach</th>
                         <th>Impressions</th>
+                        <th>Lead CQ</th>
+                        <th>Lead NCQ</th>
                       </tr>
                     </thead>
                     <tbody>
                       {fbRows.length === 0 ? (
                         <tr>
-                          <td colSpan={6}>Chưa có dữ liệu Facebook Ads theo ngày.</td>
+                          <td colSpan={8}>Chưa có dữ liệu Facebook Ads theo ngày.</td>
                         </tr>
                       ) : null}
                       {fbRows.map((row) => (
@@ -195,6 +205,8 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                           <td>{numberFmt.format(row.clicks)}</td>
                           <td>{numberFmt.format(row.reach)}</td>
                           <td>{numberFmt.format(row.impressions)}</td>
+                          <td>{numberFmt.format(row.cqLeads)}</td>
+                          <td>{numberFmt.format(row.ncqLeads)}</td>
                         </tr>
                       ))}
                     </tbody>
