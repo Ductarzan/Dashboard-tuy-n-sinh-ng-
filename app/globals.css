@@ -522,6 +522,42 @@ a {
   margin-bottom: 14px;
 }
 
+.industry-range-note {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.industry-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.pager-button {
+  border: 1px solid rgba(15, 76, 129, 0.24);
+  background: rgba(15, 76, 129, 0.08);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.pager-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .segmented {
   display: inline-flex;
   gap: 8px;

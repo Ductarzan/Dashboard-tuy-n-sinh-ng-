@@ -13,7 +13,6 @@ import type { getDashboardData } from "@/lib/dashboard-data";
 
 type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
 type TabKey = "online" | "offline";
-type IndustryDaysKey = "today" | "yesterday" | "d7" | "d30" | "d90" | "all";
 
 const tabs: Array<{ key: TabKey; label: string; description: string }> = [
   {
@@ -30,8 +29,15 @@ const tabs: Array<{ key: TabKey; label: string; description: string }> = [
 
 export function DashboardTabs({ data }: { data: DashboardData }) {
   const [active, setActive] = useState<TabKey>("online");
-  const [industryDays, setIndustryDays] = useState<IndustryDaysKey>("today");
-  const [industryPeriod, setIndustryPeriod] = useState<"day" | "week">("week");
+  const [industryPage, setIndustryPage] = useState(0);
+  const industryPageSize = 4;
+  const allIndustryDays = Array.from(
+    new Set([...data.industry.cq.days, ...data.industry.ncq.days])
+  ).sort((a, b) => b.localeCompare(a));
+  const totalIndustryPages = Math.max(1, Math.ceil(allIndustryDays.length / industryPageSize));
+  const safeIndustryPage = Math.min(industryPage, totalIndustryPages - 1);
+  const startIndex = safeIndustryPage * industryPageSize;
+  const visibleIndustryDays = allIndustryDays.slice(startIndex, startIndex + industryPageSize);
 
   return (
     <section className="tabs-shell">
@@ -119,88 +125,46 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
             <section className="detail-section">
               <SectionHeading
                 title="Thống kê tất cả ngành theo hệ"
-                subtitle="Theo dõi biến động theo days/period và tỷ lệ chuyển đổi theo ngành"
+                subtitle="Theo dõi theo từng ngày, tổng (sum) và tỷ lệ chuyển đổi theo ngành"
               />
               <div className="industry-toolbar">
-                <div className="segmented" role="tablist" aria-label="Khoảng ngày thống kê">
-                  <button
-                    type="button"
-                    className="segmented-button"
-                    data-active={industryDays === "today"}
-                    onClick={() => setIndustryDays("today")}
-                  >
-                    Today
-                  </button>
-                  <button
-                    type="button"
-                    className="segmented-button"
-                    data-active={industryDays === "yesterday"}
-                    onClick={() => setIndustryDays("yesterday")}
-                  >
-                    Yesterday
-                  </button>
-                  <button
-                    type="button"
-                    className="segmented-button"
-                    data-active={industryDays === "d7"}
-                    onClick={() => setIndustryDays("d7")}
-                  >
-                    7D
-                  </button>
-                  <button
-                    type="button"
-                    className="segmented-button"
-                    data-active={industryDays === "d30"}
-                    onClick={() => setIndustryDays("d30")}
-                  >
-                    30D
-                  </button>
-                  <button
-                    type="button"
-                    className="segmented-button"
-                    data-active={industryDays === "d90"}
-                    onClick={() => setIndustryDays("d90")}
-                  >
-                    90D
-                  </button>
-                  <button
-                    type="button"
-                    className="segmented-button"
-                    data-active={industryDays === "all"}
-                    onClick={() => setIndustryDays("all")}
-                  >
-                    ALL
-                  </button>
+                <div className="industry-range-note">
+                  Hiển thị {visibleIndustryDays.length} ngày gần nhất mỗi lần xem
                 </div>
-                <div className="segmented" role="tablist" aria-label="Chu kỳ so sánh">
+                <div className="industry-pager" aria-label="Điều hướng ngày thống kê">
                   <button
                     type="button"
-                    className="segmented-button"
-                    data-active={industryPeriod === "day"}
-                    onClick={() => setIndustryPeriod("day")}
+                    className="pager-button"
+                    onClick={() => setIndustryPage((prev) => Math.max(0, prev - 1))}
+                    disabled={safeIndustryPage === 0}
                   >
-                    Theo ngày
+                    Prev
                   </button>
+                  <span>
+                    Trang {safeIndustryPage + 1}/{totalIndustryPages}
+                  </span>
                   <button
                     type="button"
-                    className="segmented-button"
-                    data-active={industryPeriod === "week"}
-                    onClick={() => setIndustryPeriod("week")}
+                    className="pager-button"
+                    onClick={() =>
+                      setIndustryPage((prev) => Math.min(totalIndustryPages - 1, prev + 1))
+                    }
+                    disabled={safeIndustryPage >= totalIndustryPages - 1}
                   >
-                    Theo tuần
+                    Next
                   </button>
                 </div>
               </div>
               <div className="detail-grid detail-grid--two">
                 <IndustryTable
                   title="CQ: Ngành (Nguyện vọng 01)"
-                  rows={data.industry.cq[industryDays]}
-                  period={industryPeriod}
+                  rows={data.industry.cq.rows}
+                  visibleDays={visibleIndustryDays}
                 />
                 <IndustryTable
                   title="NCQ: Ngành"
-                  rows={data.industry.ncq[industryDays]}
-                  period={industryPeriod}
+                  rows={data.industry.ncq.rows}
+                  visibleDays={visibleIndustryDays}
                 />
               </div>
             </section>
@@ -361,4 +325,3 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
     </section>
   );
 }
-

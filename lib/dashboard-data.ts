@@ -31,21 +31,16 @@ type RelationInterestRow = {
   blankInterestCells: number;
 };
 
-type IndustryTrendRow = {
+type IndustryTimelineRow = {
   name: string;
   total: number;
-  dayChangePct: number | null;
-  weekChangePct: number | null;
   conversionRate: number;
+  dailyCounts: Record<string, number>;
 };
 
-type IndustryTrendBuckets = {
-  today: IndustryTrendRow[];
-  yesterday: IndustryTrendRow[];
-  d7: IndustryTrendRow[];
-  d30: IndustryTrendRow[];
-  d90: IndustryTrendRow[];
-  all: IndustryTrendRow[];
+type IndustryTimeline = {
+  days: string[];
+  rows: IndustryTimelineRow[];
 };
 
 type DashboardPayload = {
@@ -84,8 +79,8 @@ type DashboardPayload = {
     };
   };
   industry: {
-    cq: IndustryTrendBuckets;
-    ncq: IndustryTrendBuckets;
+    cq: IndustryTimeline;
+    ncq: IndustryTimeline;
   };
   cq: {
     saleBreakdown: SimpleCount[];
@@ -393,16 +388,10 @@ function parseDate(value: RawCell): Date | null {
 }
 
 function dayKey(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function isoWeekKey(date: Date) {
-  const tmp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const day = tmp.getUTCDay() || 7;
-  tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(((tmp.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  return `${tmp.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function normalizeSourceName(value: RawCell) {
@@ -448,143 +437,64 @@ function normalizeIndustryName(value: RawCell) {
 
   return aliases[key] || withoutCode;
 }
-function buildIndustryTrends(
+function buildIndustryTimeline(
   data: RawRow[],
   dateIdx: number,
   industryIdx: number,
   statusIdx: number,
-  normalizer: (value: RawCell) => string,
-  lookbackDays?: number,
-  endOffsetDays = 0
-): IndustryTrendRow[] {
+  normalizer: (value: RawCell) => string
+): IndustryTimeline {
   const datedRows = data
     .map((row) => ({ row, date: parseDate(row[dateIdx]) }))
     .filter((item) => item.date !== null) as Array<{ row: RawRow; date: Date }>;
-
-  const latestDate = datedRows.length
-    ? new Date(Math.max(...datedRows.map((item) => item.date.getTime())))
-    : null;
-
-  const anchorDate = latestDate
-    ? new Date(
-        latestDate.getFullYear(),
-        latestDate.getMonth(),
-        latestDate.getDate() - endOffsetDays,
-        23,
-        59,
-        59,
-        999
-      )
-    : null;
-
-  const latestWeekKey = anchorDate ? isoWeekKey(anchorDate) : null;
-  const prevWeekKey = anchorDate
-    ? isoWeekKey(new Date(anchorDate.getTime() - 7 * 86400000))
-    : null;
-
-  const windowDays = lookbackDays ?? null;
-  const currentWindowEndMs = anchorDate ? anchorDate.getTime() : null;
-  const currentWindowStartMs =
-    anchorDate && windowDays
-      ? new Date(anchorDate.getFullYear(), anchorDate.getMonth(), anchorDate.getDate()).getTime() -
-        (windowDays - 1) * 86400000
-      : null;
-  const prevWindowEndMs = currentWindowStartMs !== null ? currentWindowStartMs - 1 : null;
-  const prevWindowStartMs =
-    prevWindowEndMs !== null && windowDays ? prevWindowEndMs - (windowDays - 1) * 86400000 : null;
 
   const stats: Record<
     string,
     {
       total: number;
       success: number;
-      currentWindowCount: number;
-      prevWindowCount: number;
-      weekCount: number;
-      prevWeekCount: number;
+      dailyCounts: Record<string, number>;
     }
   > = {};
+  const dayKeys = new Set<string>();
 
   for (const item of datedRows) {
     const row = item.row;
     const rowDate = item.date;
-
-    if (currentWindowStartMs !== null && currentWindowEndMs !== null) {
-      const ts = rowDate.getTime();
-      if (ts < currentWindowStartMs || ts > currentWindowEndMs) {
-        continue;
-      }
-    }
-
     const industry = normalizeIndustryName(row[industryIdx]);
+    const key = dayKey(rowDate);
+
     if (!stats[industry]) {
       stats[industry] = {
         total: 0,
         success: 0,
-        currentWindowCount: 0,
-        prevWindowCount: 0,
-        weekCount: 0,
-        prevWeekCount: 0
+        dailyCounts: {}
       };
     }
 
     const bucket = stats[industry];
+    dayKeys.add(key);
     bucket.total += 1;
-    bucket.currentWindowCount += 1;
+    bucket.dailyCounts[key] = (bucket.dailyCounts[key] || 0) + 1;
 
     const statusGroup = normalizer(row[statusIdx]);
     if (statusGroup.startsWith("1.")) {
       bucket.success += 1;
     }
-
-    if (latestWeekKey && prevWeekKey) {
-      const rowWeekKey = isoWeekKey(rowDate);
-      if (rowWeekKey === latestWeekKey) bucket.weekCount += 1;
-      if (rowWeekKey === prevWeekKey) bucket.prevWeekCount += 1;
-    }
   }
 
-  if (prevWindowStartMs !== null && prevWindowEndMs !== null) {
-    for (const item of datedRows) {
-      const rowDate = item.date;
-      const ts = rowDate.getTime();
-      if (ts < prevWindowStartMs || ts > prevWindowEndMs) continue;
-
-      const industry = normalizeIndustryName(item.row[industryIdx]);
-      const bucket = stats[industry];
-      if (!bucket) continue;
-      bucket.prevWindowCount += 1;
-    }
-  }
-
-  return Object.entries(stats)
+  const rows = Object.entries(stats)
     .map(([name, item]) => ({
       name,
       total: item.total,
-      dayChangePct:
-        item.prevWindowCount > 0
-          ? ((item.currentWindowCount - item.prevWindowCount) / item.prevWindowCount) * 100
-          : null,
-      weekChangePct:
-        item.prevWeekCount > 0 ? ((item.weekCount - item.prevWeekCount) / item.prevWeekCount) * 100 : null,
-      conversionRate: item.total > 0 ? (item.success / item.total) * 100 : 0
+      conversionRate: item.total > 0 ? (item.success / item.total) * 100 : 0,
+      dailyCounts: item.dailyCounts
     }))
     .sort((a, b) => b.total - a.total);
-}
-function buildIndustryTrendBuckets(
-  data: RawRow[],
-  dateIdx: number,
-  industryIdx: number,
-  statusIdx: number,
-  normalizer: (value: RawCell) => string
-): IndustryTrendBuckets {
+
   return {
-    today: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer, 1, 0),
-    yesterday: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer, 1, 1),
-    d7: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer, 7),
-    d30: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer, 30),
-    d90: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer, 90),
-    all: buildIndustryTrends(data, dateIdx, industryIdx, statusIdx, normalizer)
+    days: [...dayKeys].sort((a, b) => b.localeCompare(a)),
+    rows
   };
 }
 function cleanRows(rows: RawRow[], keyIndex: number) {
@@ -979,8 +889,8 @@ function buildPayload(
       }
     },
     industry: {
-      cq: buildIndustryTrendBuckets(cqData, 0, 7, 33, normalizeStatus),
-      ncq: buildIndustryTrendBuckets(ncqData, 0, 8, 9, normalizeStatus)
+      cq: buildIndustryTimeline(cqData, 0, 7, 33, normalizeStatus),
+      ncq: buildIndustryTimeline(ncqData, 0, 8, 9, normalizeStatus)
     },
     cq: {
       saleBreakdown: countBy(cqData, 3),
@@ -1015,9 +925,6 @@ export async function getDashboardData() {
 
   return buildPayload(buildDemoDataset(), true);
 }
-
-
-
 
 
 

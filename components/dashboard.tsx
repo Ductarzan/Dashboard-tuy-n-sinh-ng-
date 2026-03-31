@@ -19,12 +19,11 @@ type RelationRow = {
   blankInterestCells: number;
 };
 
-type IndustryTrendRow = {
+type IndustryTimelineRow = {
   name: string;
   total: number;
-  dayChangePct: number | null;
-  weekChangePct: number | null;
   conversionRate: number;
+  dailyCounts: Record<string, number>;
 };
 
 export function MetricCard({
@@ -187,23 +186,21 @@ export function RelationTable({
   );
 }
 
-function formatTrend(value: number | null) {
-  if (value === null) return "—";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(1)}%`;
+function formatDisplayDate(dayKey: string) {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  if (!year || !month || !day) return dayKey;
+  return `${day}/${month}`;
 }
 
 export function IndustryTable({
   title,
   rows,
-  period
+  visibleDays
 }: {
   title: string;
-  rows: IndustryTrendRow[];
-  period: "day" | "week";
+  rows: IndustryTimelineRow[];
+  visibleDays: string[];
 }) {
-  const periodLabel = period === "day" ? "so với hôm qua" : "so với tuần trước";
-
   return (
     <section className="subpanel">
       <h3>{title}</h3>
@@ -212,8 +209,10 @@ export function IndustryTable({
           <thead>
             <tr>
               <th>Ngành</th>
-              <th>Tổng leads</th>
-              <th>% {periodLabel}</th>
+              <th>Sum</th>
+              {visibleDays.map((day) => (
+                <th key={day}>{formatDisplayDate(day)}</th>
+              ))}
               <th>Tỷ lệ conversion</th>
             </tr>
           </thead>
@@ -222,7 +221,9 @@ export function IndustryTable({
               <tr key={row.name}>
                 <td>{row.name}</td>
                 <td>{row.total}</td>
-                <td>{formatTrend(period === "day" ? row.dayChangePct : row.weekChangePct)}</td>
+                {visibleDays.map((day) => (
+                  <td key={day}>{row.dailyCounts[day] || 0}</td>
+                ))}
                 <td>{row.conversionRate.toFixed(1)}%</td>
               </tr>
             ))}
