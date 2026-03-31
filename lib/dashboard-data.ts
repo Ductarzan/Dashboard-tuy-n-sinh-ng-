@@ -43,6 +43,31 @@ type IndustryTimeline = {
   rows: IndustryTimelineRow[];
 };
 
+type FbDailyInsight = {
+  date: string;
+  spend: number;
+  messages: number;
+  clicks: number;
+  reach: number;
+  impressions: number;
+};
+
+type FbAdsPayload = {
+  enabled: boolean;
+  accountIds: string[];
+  totals: {
+    spendAllTime: number;
+    spendYesterday: number;
+    spendToday: number;
+    messagesAllTime: number;
+    clicksAllTime: number;
+    reachAllTime: number;
+    impressionsAllTime: number;
+  };
+  byDay: FbDailyInsight[];
+  error: string | null;
+};
+
 type DashboardPayload = {
   generatedAt: string;
   timezone: string;
@@ -102,6 +127,7 @@ type DashboardPayload = {
     totalCQ: number;
     totalNCQ: number;
   };
+  fbAds: FbAdsPayload;
 };
 
 const sheetNames = ["CQ_Status", "NCQ_Status", "Offline_Status", "Data_TuChu"] as const;
@@ -552,6 +578,222 @@ function buildInterestByColumn(data: RawRow[], interestColumns: number[], source
   };
 }
 
+type FbAction = {
+  action_type?: string;
+  value?: string;
+};
+
+type FbInsightApiRow = {
+  date_start?: string;
+  spend?: string;
+  clicks?: string;
+  reach?: string;
+  impressions?: string;
+  actions?: FbAction[];
+};
+
+function parseNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
+function formatDateInTimezone(date: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === "year")?.value || "1970";
+  const month = parts.find((part) => part.type === "month")?.value || "01";
+  const day = parts.find((part) => part.type === "day")?.value || "01";
+  return `${year}-${month}-${day}`;
+}
+
+function extractMessageCount(actions: FbAction[] | undefined) {
+  if (!actions || actions.length === 0) return 0;
+
+  return actions.reduce((sum, action) => {
+    const type = (action.action_type || "").toLowerCase();
+    if (!type) return sum;
+
+    const isMessageAction =
+      type.includes("messaging") ||
+      type.includes("onsite_conversion.messaging") ||
+      type.includes("message") ||
+      type.includes("conversation_started");
+
+    if (!isMessageAction) return sum;
+    return sum + parseNumber(action.value);
+  }, 0);
+}
+
+async function fetchFbInsightsForAccount(
+  accountId: string,
+  accessToken: string
+): Promise<FbInsightApiRow[]> {
+  let nextUrl =
+    `https://graph.facebook.com/v20.0/${accountId}/insights` +
+    `?fields=date_start,spend,clicks,reach,impressions,actions` +
+    `&time_increment=1&date_preset=maximum&limit=500` +
+    `&access_token=${encodeURIComponent(accessToken)}`;
+  const rows: FbInsightApiRow[] = [];
+
+  while (nextUrl) {
+    const response = await fetch(nextUrl, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Facebook API error (${accountId}): ${response.status} ${body}`);
+    }
+
+    const json = (await response.json()) as {
+      data?: FbInsightApiRow[];
+      paging?: { next?: string };
+    };
+
+    if (json.data?.length) {
+      rows.push(...json.data);
+    }
+
+    nextUrl = json.paging?.next || "";
+  }
+
+  return rows;
+}
+
+async function buildFbAdsPayload(timezone: string): Promise<FbAdsPayload> {
+  const accessToken = process.env.FB_ACCESS_TOKEN?.trim() || "";
+  const fbStartDate = process.env.FB_ADS_START_DATE?.trim() || "2026-03-21";
+  const accountsFromEnv =
+    process.env.FB_AD_ACCOUNT_IDS?.split(",")
+      .map((item) => item.trim())
+      .filter(Boolean) || [];
+  const fallbackAccounts = [
+    "act_1821842625152762",
+    "act_1474263064222209",
+    "act_1831887934042126"
+  ];
+  const accountIds = accountsFromEnv.length > 0 ? accountsFromEnv : fallbackAccounts;
+
+  if (!accessToken || accountIds.length === 0) {
+    return {
+      enabled: false,
+      accountIds,
+      totals: {
+        spendAllTime: 0,
+        spendYesterday: 0,
+        spendToday: 0,
+        messagesAllTime: 0,
+        clicksAllTime: 0,
+        reachAllTime: 0,
+        impressionsAllTime: 0
+      },
+      byDay: [],
+      error: "Thiếu FB_ACCESS_TOKEN hoặc FB_AD_ACCOUNT_IDS."
+    };
+  }
+
+  try {
+    const rowsByAccount = await Promise.all(
+      accountIds.map((accountId) => fetchFbInsightsForAccount(accountId, accessToken))
+    );
+    const grouped: Record<string, FbDailyInsight> = {};
+
+    for (const rows of rowsByAccount) {
+      for (const row of rows) {
+        const date = row.date_start || "";
+        if (!date) continue;
+
+        if (!grouped[date]) {
+          grouped[date] = {
+            date,
+            spend: 0,
+            messages: 0,
+            clicks: 0,
+            reach: 0,
+            impressions: 0
+          };
+        }
+
+        grouped[date].spend += parseNumber(row.spend);
+        grouped[date].clicks += parseNumber(row.clicks);
+        grouped[date].reach += parseNumber(row.reach);
+        grouped[date].impressions += parseNumber(row.impressions);
+        grouped[date].messages += extractMessageCount(row.actions);
+      }
+    }
+
+    const byDay = Object.values(grouped)
+      .filter((item) => item.date >= fbStartDate)
+      .sort((a, b) => b.date.localeCompare(a.date));
+    const todayKey = formatDateInTimezone(new Date(), timezone);
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayKey = formatDateInTimezone(yesterdayDate, timezone);
+
+    const totals = byDay.reduce(
+      (acc, item) => {
+        acc.spendAllTime += item.spend;
+        acc.messagesAllTime += item.messages;
+        acc.clicksAllTime += item.clicks;
+        acc.reachAllTime += item.reach;
+        acc.impressionsAllTime += item.impressions;
+
+        if (item.date === todayKey) {
+          acc.spendToday += item.spend;
+        }
+        if (item.date === yesterdayKey) {
+          acc.spendYesterday += item.spend;
+        }
+        return acc;
+      },
+      {
+        spendAllTime: 0,
+        spendYesterday: 0,
+        spendToday: 0,
+        messagesAllTime: 0,
+        clicksAllTime: 0,
+        reachAllTime: 0,
+        impressionsAllTime: 0
+      }
+    );
+
+    return {
+      enabled: true,
+      accountIds,
+      totals,
+      byDay,
+      error: null
+    };
+  } catch (error) {
+    return {
+      enabled: false,
+      accountIds,
+      totals: {
+        spendAllTime: 0,
+        spendYesterday: 0,
+        spendToday: 0,
+        messagesAllTime: 0,
+        clicksAllTime: 0,
+        reachAllTime: 0,
+        impressionsAllTime: 0
+      },
+      byDay: [],
+      error: error instanceof Error ? error.message : "Không thể tải dữ liệu Facebook Ads."
+    };
+  }
+}
+
 async function loadFromGoogleSheets() {
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
@@ -849,7 +1091,8 @@ function buildDemoDataset(): Record<(typeof sheetNames)[number], unknown[][]> {
 
 function buildPayload(
   rawData: Record<(typeof sheetNames)[number], unknown[][]>,
-  isDemo: boolean
+  isDemo: boolean,
+  fbAds: FbAdsPayload
 ): DashboardPayload {
   const cqData = cleanRows(toRows(rawData.CQ_Status), 2);
   const ncqData = cleanRows(toRows(rawData.NCQ_Status), 3);
@@ -907,28 +1150,27 @@ function buildPayload(
       statusBreakdown: countByStatus(offlineData, 4, normalizeOfflineStatus),
       matrix: buildSaleMatrix(offlineData, 9, 4, normalizeOfflineStatus)
     },
-    selfManaged
+    selfManaged,
+    fbAds
   };
 }
 
 export async function getDashboardData() {
   noStore();
+  const timezone = process.env.APP_TIMEZONE || "Asia/Bangkok";
+  const fbAds = await buildFbAdsPayload(timezone);
 
   try {
     const sheetData = await loadFromGoogleSheets();
     if (sheetData) {
-      return buildPayload(sheetData, false);
+      return buildPayload(sheetData, false, fbAds);
     }
   } catch (error) {
     console.error("Failed to load Google Sheets data, using demo dataset.", error);
   }
 
-  return buildPayload(buildDemoDataset(), true);
+  return buildPayload(buildDemoDataset(), true, fbAds);
 }
-
-
-
-
 
 
 
