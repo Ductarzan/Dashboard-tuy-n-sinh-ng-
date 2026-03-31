@@ -30,6 +30,7 @@ const tabs: Array<{ key: TabKey; label: string; description: string }> = [
 export function DashboardTabs({ data }: { data: DashboardData }) {
   const [active, setActive] = useState<TabKey>("online");
   const [industryPage, setIndustryPage] = useState(0);
+  const [fbPage, setFbPage] = useState(0);
   const industryPageSize = 4;
   const allIndustryDays = Array.from(
     new Set([...data.industry.cq.days, ...data.industry.ncq.days])
@@ -38,7 +39,11 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
   const safeIndustryPage = Math.min(industryPage, totalIndustryPages - 1);
   const startIndex = safeIndustryPage * industryPageSize;
   const visibleIndustryDays = allIndustryDays.slice(startIndex, startIndex + industryPageSize);
-  const fbRows = data.fbAds.byDay.slice(0, 60);
+  const fbPageSize = 5;
+  const totalFbPages = Math.max(1, Math.ceil(data.fbAds.byDay.length / fbPageSize));
+  const safeFbPage = Math.min(fbPage, totalFbPages - 1);
+  const fbStartIndex = safeFbPage * fbPageSize;
+  const fbRows = data.fbAds.byDay.slice(fbStartIndex, fbStartIndex + fbPageSize);
 
   const currency = new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -129,6 +134,41 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                   Tài khoản đang gộp: {data.fbAds.accountIds.length}. Hiển thị {fbRows.length} ngày gần nhất.
                 </p>
                 {data.fbAds.error ? <p className="detail-note">Lỗi Facebook Ads: {data.fbAds.error}</p> : null}
+                <div className="industry-pager" aria-label="Điều hướng trang Facebook Ads">
+                  <button
+                    type="button"
+                    className="pager-button"
+                    onClick={() => setFbPage((prev) => Math.max(0, prev - 1))}
+                    disabled={safeFbPage === 0}
+                  >
+                    Prev
+                  </button>
+                  <label className="pager-select-wrap">
+                    <span>Trang</span>
+                    <select
+                      className="pager-select"
+                      value={safeFbPage}
+                      onChange={(event) => setFbPage(Number(event.target.value))}
+                    >
+                      {Array.from({ length: totalFbPages }, (_, index) => (
+                        <option key={index} value={index}>
+                          {index + 1}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <span>
+                    Trang {safeFbPage + 1}/{totalFbPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="pager-button"
+                    onClick={() => setFbPage((prev) => Math.min(totalFbPages - 1, prev + 1))}
+                    disabled={safeFbPage >= totalFbPages - 1}
+                  >
+                    Next
+                  </button>
+                </div>
                 <div className="table-wrap">
                   <table className="data-table">
                     <thead>
