@@ -686,6 +686,10 @@ async function buildFbAdsPayload(timezone: string): Promise<FbAdsPayload> {
   const accountIds = accountsFromEnv.length > 0 ? accountsFromEnv : fallbackAccounts;
 
   if (!accessToken || accountIds.length === 0) {
+    const missing: string[] = [];
+    if (!accessToken) missing.push("FB_ACCESS_TOKEN");
+    if (accountIds.length === 0) missing.push("FB_AD_ACCOUNT_IDS");
+
     return {
       enabled: false,
       accountIds,
@@ -699,7 +703,7 @@ async function buildFbAdsPayload(timezone: string): Promise<FbAdsPayload> {
         impressionsAllTime: 0
       },
       byDay: [],
-      error: "Thiếu FB_ACCESS_TOKEN hoặc FB_AD_ACCOUNT_IDS."
+      error: `Thiếu biến môi trường: ${missing.join(", ")}.`
     };
   }
 
