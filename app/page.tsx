@@ -17,7 +17,7 @@ export default async function HomePage() {
 
   return (
     <main className="page-shell">
-      <AutoRefresh intervalMs={30 * 60 * 1000} />
+      <AutoRefresh scheduleHours={[8, 13, 16, 20]} timeZone="Asia/Jakarta" />
 
       <section className="hero">
         <div>
