@@ -579,8 +579,8 @@ function buildIndustryTimeline(
     rows
   };
 }
-function cleanRows(rows: RawRow[], keyIndex: number) {
-  return rows.filter((row) => cellToString(row[keyIndex]) !== "");
+function cleanRowsByAnyValue(rows: RawRow[], keyIndices: number[]) {
+  return rows.filter((row) => keyIndices.some((index) => cellToString(row[index]) !== ""));
 }
 
 function toRows(values: unknown[][] | undefined) {
@@ -1162,9 +1162,9 @@ function buildPayload(
   isDemo: boolean,
   fbAds: FbAdsPayload
 ): DashboardPayload {
-  const cqData = cleanRows(toRows(rawData.CQ_Status), 2);
-  const ncqData = cleanRows(toRows(rawData.NCQ_Status), 3);
-  const offlineData = cleanRows(toRows(rawData.Offline_Status), 1);
+  const cqData = cleanRowsByAnyValue(toRows(rawData.CQ_Status), [0, 2, 7, 8, 33]);
+  const ncqData = cleanRowsByAnyValue(toRows(rawData.NCQ_Status), [0, 3, 8, 9]);
+  const offlineData = cleanRowsByAnyValue(toRows(rawData.Offline_Status), [0, 1, 4, 6, 7]);
   const selfManaged = buildSelfManaged(toRows(rawData.Data_TuChu));
 
   const cqTotal = cqData.length;
