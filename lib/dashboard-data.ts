@@ -183,6 +183,53 @@ function findColumnIndex(headerRow: unknown[] | undefined, candidates: string[],
   return fallback;
 }
 
+function isTimestampLikeCell(value: RawCell) {
+  const text = cellToString(value);
+  if (!text) return false;
+  return /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(text) || /\d{2}:\d{2}:\d{2}/.test(text);
+}
+
+function findDateColumnIndex(
+  headerRow: unknown[] | undefined,
+  dataRows: RawRow[],
+  candidates: string[],
+  fallback: number
+) {
+  const candidateIndex = findColumnIndex(headerRow, candidates, -1);
+  if (candidateIndex >= 0) {
+    return candidateIndex;
+  }
+
+  if (!headerRow || headerRow.length === 0) return fallback;
+
+  let bestIndex = fallback;
+  let bestScore = -1;
+  const sampleRows = dataRows.slice(0, 50);
+
+  for (let columnIndex = 0; columnIndex < headerRow.length; columnIndex += 1) {
+    let parseableCount = 0;
+    let timestampLikeCount = 0;
+
+    for (const row of sampleRows) {
+      const value = row[columnIndex];
+      if (parseDayKeyFromCell(value)) {
+        parseableCount += 1;
+      }
+      if (isTimestampLikeCell(value)) {
+        timestampLikeCount += 1;
+      }
+    }
+
+    const score = timestampLikeCount * 10 + parseableCount;
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = columnIndex;
+    }
+  }
+
+  return bestIndex;
+}
+
 function normalizeStatus(value: RawCell) {
   if (!cellToString(value)) return "5. Chưa liên hệ";
   const str = cellToString(value).toLowerCase();
@@ -1225,29 +1272,33 @@ function buildPayload(
   const cqHeader = (rawData.CQ_Status[0] || []) as RawRow;
   const ncqHeader = (rawData.NCQ_Status[0] || []) as RawRow;
   const offlineHeader = (rawData.Offline_Status[0] || []) as RawRow;
+  const cqRows = toRows(rawData.CQ_Status);
+  const ncqRows = toRows(rawData.NCQ_Status);
+  const offlineRows = toRows(rawData.Offline_Status);
 
-  const cqDateIdx = findColumnIndex(cqHeader, ["Created time", "Ngày tạo"], 0);
+  const cqDateIdx = findDateColumnIndex(cqHeader, cqRows, ["Created time", "Ngày tạo"], 0);
   const cqSourceIdx = findColumnIndex(cqHeader, ["Nguồn", "Source"], 1);
   const cqSaleIdx = findColumnIndex(cqHeader, ["Sale", "Nhân viên", "Tư vấn viên"], 3);
   const cqIndustry1Idx = findColumnIndex(cqHeader, ["Nguyện vọng 1", "Nguyện vọng 01"], 7);
   const cqIndustry2Idx = findColumnIndex(cqHeader, ["Nguyện vọng 2", "Nguyện vọng 02"], 8);
   const cqStatusIdx = findColumnIndex(cqHeader, ["Tình trạng", "Status"], 33);
 
-  const ncqDateIdx = findColumnIndex(ncqHeader, ["Created time", "Ngày tạo"], 0);
+  const ncqDateIdx = findDateColumnIndex(ncqHeader, ncqRows, ["Created time", "Ngày tạo"], 0);
   const ncqSourceIdx = findColumnIndex(ncqHeader, ["Nguồn", "Source"], 1);
   const ncqSaleIdx = findColumnIndex(ncqHeader, ["Sale", "Nhân viên", "Tư vấn viên"], 2);
   const ncqIndustryIdx = findColumnIndex(ncqHeader, ["Ngành", "Nguyện vọng 1", "Nguyện vọng 01"], 8);
   const ncqStatusIdx = findColumnIndex(ncqHeader, ["Tình trạng", "Status"], 9);
 
-  const offlineDateIdx = findColumnIndex(offlineHeader, ["Created time", "Ngày tạo", "Lead"], 0);
+  const offlineDateIdx = findDateColumnIndex(
+    offlineHeader,
+    offlineRows,
+    ["Created time", "Ngày tạo", "Lead"],
+    0
+  );
   const offlineSaleIdx = findColumnIndex(offlineHeader, ["Sale", "Nhân viên", "Tư vấn viên"], 9);
   const offlineStatusIdx = findColumnIndex(offlineHeader, ["Tình trạng", "Status"], 4);
   const offlineIndustry1Idx = findColumnIndex(offlineHeader, ["Nguyện vọng 1", "Nguyện vọng 01"], 6);
   const offlineIndustry2Idx = findColumnIndex(offlineHeader, ["Nguyện vọng 2", "Nguyện vọng 02"], 7);
-
-  const cqRows = toRows(rawData.CQ_Status);
-  const ncqRows = toRows(rawData.NCQ_Status);
-  const offlineRows = toRows(rawData.Offline_Status);
 
   const cqData = cleanRowsByDateOrAnyValue(cqRows, cqDateIdx, [
     cqSourceIdx,
