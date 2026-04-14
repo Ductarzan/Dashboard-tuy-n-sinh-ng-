@@ -519,7 +519,7 @@ function normalizeIndustryName(value: RawCell) {
 function buildIndustryTimeline(
   data: RawRow[],
   dateIdx: number,
-  industryIdx: number,
+  industryIndices: number[],
   statusIdx: number,
   normalizer: (value: RawCell) => string
 ): IndustryTimeline {
@@ -536,25 +536,32 @@ function buildIndustryTimeline(
   for (const row of data) {
     const key = parseDayKeyFromCell(row[dateIdx]);
     if (!key) continue;
-
-    const industry = normalizeIndustryName(row[industryIdx]);
-
-    if (!stats[industry]) {
-      stats[industry] = {
-        total: 0,
-        success: 0,
-        dailyCounts: {}
-      };
-    }
-
-    const bucket = stats[industry];
-    dayKeys.add(key);
-    bucket.total += 1;
-    bucket.dailyCounts[key] = (bucket.dailyCounts[key] || 0) + 1;
-
+    const industriesInRow = new Set(
+      industryIndices
+        .map((index) => cellToString(row[index]))
+        .filter((value) => value !== "")
+        .map((value) => normalizeIndustryName(value))
+    );
+    if (industriesInRow.size === 0) continue;
     const statusGroup = normalizer(row[statusIdx]);
-    if (statusGroup.startsWith("1.")) {
-      bucket.success += 1;
+
+    for (const industry of industriesInRow) {
+      if (!stats[industry]) {
+        stats[industry] = {
+          total: 0,
+          success: 0,
+          dailyCounts: {}
+        };
+      }
+
+      const bucket = stats[industry];
+      dayKeys.add(key);
+      bucket.total += 1;
+      bucket.dailyCounts[key] = (bucket.dailyCounts[key] || 0) + 1;
+
+      if (statusGroup.startsWith("1.")) {
+        bucket.success += 1;
+      }
     }
   }
 
@@ -1224,8 +1231,8 @@ function buildPayload(
       }
     },
     industry: {
-      cq: buildIndustryTimeline(cqData, 0, 7, 33, normalizeStatus),
-      ncq: buildIndustryTimeline(ncqData, 0, 8, 9, normalizeStatus)
+      cq: buildIndustryTimeline(cqData, 0, [7, 8], 33, normalizeStatus),
+      ncq: buildIndustryTimeline(ncqData, 0, [8], 9, normalizeStatus)
     },
     cq: {
       saleBreakdown: countBy(cqData, 3),
