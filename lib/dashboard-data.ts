@@ -461,11 +461,24 @@ function parseDayKeyFromCell(value: RawCell): string | null {
   return Number.isNaN(parsed.getTime()) ? null : dayKey(parsed);
 }
 
+function getRowDayKey(row: RawRow, preferredIndex: number) {
+  const direct = parseDayKeyFromCell(row[preferredIndex]);
+  if (direct) return direct;
+
+  const probeCount = Math.min(4, row.length);
+  for (let index = 0; index < probeCount; index += 1) {
+    const candidate = parseDayKeyFromCell(row[index]);
+    if (candidate) return candidate;
+  }
+
+  return null;
+}
+
 function countRowsByDay(data: RawRow[], dateIdx: number) {
   const result: Record<string, number> = {};
 
   for (const row of data) {
-    const key = parseDayKeyFromCell(row[dateIdx]);
+    const key = getRowDayKey(row, dateIdx);
     if (!key) continue;
     result[key] = (result[key] || 0) + 1;
   }
@@ -534,7 +547,7 @@ function buildIndustryTimeline(
   const dayKeys = new Set<string>();
 
   for (const row of data) {
-    const key = parseDayKeyFromCell(row[dateIdx]);
+    const key = getRowDayKey(row, dateIdx);
     if (!key) continue;
     const industriesInRow = new Set(
       industryIndices
@@ -579,8 +592,10 @@ function buildIndustryTimeline(
     rows
   };
 }
-function cleanRowsByAnyValue(rows: RawRow[], keyIndices: number[]) {
-  return rows.filter((row) => keyIndices.some((index) => cellToString(row[index]) !== ""));
+function cleanRowsByDateOrAnyValue(rows: RawRow[], dateIndex: number, keyIndices: number[]) {
+  return rows.filter(
+    (row) => getRowDayKey(row, dateIndex) !== null || keyIndices.some((index) => cellToString(row[index]) !== "")
+  );
 }
 
 function toRows(values: unknown[][] | undefined) {
@@ -1162,9 +1177,9 @@ function buildPayload(
   isDemo: boolean,
   fbAds: FbAdsPayload
 ): DashboardPayload {
-  const cqData = cleanRowsByAnyValue(toRows(rawData.CQ_Status), [0, 2, 7, 8, 33]);
-  const ncqData = cleanRowsByAnyValue(toRows(rawData.NCQ_Status), [0, 3, 8, 9]);
-  const offlineData = cleanRowsByAnyValue(toRows(rawData.Offline_Status), [0, 1, 4, 6, 7]);
+  const cqData = cleanRowsByDateOrAnyValue(toRows(rawData.CQ_Status), 0, [2, 7, 8, 33]);
+  const ncqData = cleanRowsByDateOrAnyValue(toRows(rawData.NCQ_Status), 0, [3, 8, 9]);
+  const offlineData = cleanRowsByDateOrAnyValue(toRows(rawData.Offline_Status), 0, [1, 4, 6, 7]);
   const selfManaged = buildSelfManaged(toRows(rawData.Data_TuChu));
 
   const cqTotal = cqData.length;
