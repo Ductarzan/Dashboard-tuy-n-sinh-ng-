@@ -1231,7 +1231,7 @@ function buildPayload(
       }
     },
     industry: {
-      cq: buildIndustryTimeline(cqData, 0, [7, 8], 33, normalizeStatus),
+      cq: buildIndustryTimeline(cqData, 0, [7], 33, normalizeStatus),
       ncq: buildIndustryTimeline(ncqData, 0, [8], 9, normalizeStatus)
     },
     cq: {
