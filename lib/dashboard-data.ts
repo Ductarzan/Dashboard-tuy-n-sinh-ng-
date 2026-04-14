@@ -76,6 +76,18 @@ type DashboardPayload = {
   generatedAt: string;
   timezone: string;
   isDemo: boolean;
+  debug: {
+    spreadsheetIdSuffix: string;
+    cqDateColumnLabel: string;
+    cqIndustry1ColumnLabel: string;
+    cqStatusColumnLabel: string;
+    cqRowCountRead: number;
+    cqRowsWithDate: number;
+    cqLeadsByDayRecent: Array<{
+      date: string;
+      count: number;
+    }>;
+  };
   summary: {
     totalLeads: number;
     cqTotal: number;
@@ -1298,6 +1310,18 @@ function buildPayload(
     generatedAt: new Date().toISOString(),
     timezone: process.env.APP_TIMEZONE || "Asia/Bangkok",
     isDemo,
+    debug: {
+      spreadsheetIdSuffix: (process.env.GOOGLE_SHEETS_SPREADSHEET_ID || "").slice(-8),
+      cqDateColumnLabel: cellToString(cqHeader[cqDateIdx]) || `idx:${cqDateIdx}`,
+      cqIndustry1ColumnLabel: cellToString(cqHeader[cqIndustry1Idx]) || `idx:${cqIndustry1Idx}`,
+      cqStatusColumnLabel: cellToString(cqHeader[cqStatusIdx]) || `idx:${cqStatusIdx}`,
+      cqRowCountRead: cqRows.length,
+      cqRowsWithDate: cqRows.filter((row) => getRowDayKey(row, cqDateIdx) !== null).length,
+      cqLeadsByDayRecent: Object.entries(cqLeadsByDay)
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .slice(0, 7)
+        .map(([date, count]) => ({ date, count }))
+    },
     summary: {
       totalLeads: cqTotal + ncqTotal + offlineTotal + selfManagedTotal,
       cqTotal,

@@ -95,6 +95,61 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
 
             <section className="detail-section">
               <SectionHeading
+                title="Debug Google Sheets"
+                subtitle="Khối này dùng để đối chiếu đúng sheet, đúng cột ngày và số lead CQ server đang đọc"
+              />
+              <div className="detail-grid detail-grid--single">
+                <section className="subpanel debug-panel">
+                  <div className="debug-grid">
+                    <article>
+                      <p>Sheet ID suffix</p>
+                      <strong>{data.debug.spreadsheetIdSuffix || "Không có"}</strong>
+                    </article>
+                    <article>
+                      <p>Cột ngày CQ</p>
+                      <strong>{data.debug.cqDateColumnLabel}</strong>
+                    </article>
+                    <article>
+                      <p>Cột NV1 CQ</p>
+                      <strong>{data.debug.cqIndustry1ColumnLabel}</strong>
+                    </article>
+                    <article>
+                      <p>Cột status CQ</p>
+                      <strong>{data.debug.cqStatusColumnLabel}</strong>
+                    </article>
+                    <article>
+                      <p>Tổng row CQ đọc được</p>
+                      <strong>{numberFmt.format(data.debug.cqRowCountRead)}</strong>
+                    </article>
+                    <article>
+                      <p>Row CQ có ngày hợp lệ</p>
+                      <strong>{numberFmt.format(data.debug.cqRowsWithDate)}</strong>
+                    </article>
+                  </div>
+                  <div className="table-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Ngày</th>
+                          <th>Lead CQ server đếm</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.debug.cqLeadsByDayRecent.map((item) => (
+                          <tr key={item.date}>
+                            <td>{item.date}</td>
+                            <td>{numberFmt.format(item.count)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              </div>
+            </section>
+
+            <section className="detail-section">
+              <SectionHeading
                 title="Facebook Ads: Tổng chi tiêu và chỉ số theo ngày"
                 subtitle="Gộp dữ liệu từ tất cả tài khoản quảng cáo đã cấu hình trong hệ thống"
               />

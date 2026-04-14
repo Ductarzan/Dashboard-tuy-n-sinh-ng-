@@ -288,6 +288,36 @@ a {
   line-height: 1.5;
 }
 
+.debug-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.debug-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.debug-grid article {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.debug-grid p {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.debug-grid strong {
+  font-size: 16px;
+}
+
 .fb-metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -455,7 +485,8 @@ a {
   .metrics-grid,
   .chart-grid,
   .detail-grid,
-  .relation-grid {
+  .relation-grid,
+  .debug-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -481,7 +512,8 @@ a {
   .two-column,
   .chart-grid,
   .detail-grid,
-  .relation-grid {
+  .relation-grid,
+  .debug-grid {
     grid-template-columns: 1fr;
   }
 
