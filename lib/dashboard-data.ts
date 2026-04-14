@@ -424,13 +424,49 @@ function dayKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function parseDayKeyFromCell(value: RawCell): string | null {
+  if (value === null || value === undefined || value === "") return null;
+
+  if (typeof value === "number") {
+    const serialDate = new Date(Math.round((value - 25569) * 86400 * 1000));
+    return Number.isNaN(serialDate.getTime()) ? null : dayKey(serialDate);
+  }
+
+  const text = typeof value === "string" ? value.trim() : String(value).trim();
+  if (!text) return null;
+
+  const isoPrefix = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
+  if (isoPrefix) {
+    return `${isoPrefix[1]}-${isoPrefix[2]}-${isoPrefix[3]}`;
+  }
+
+  const viMatch = text.match(
+    /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+  );
+  if (viMatch) {
+    const day = String(Number(viMatch[1])).padStart(2, "0");
+    const month = String(Number(viMatch[2])).padStart(2, "0");
+    const yearRaw = Number(viMatch[3]);
+    const year = String(yearRaw < 100 ? 2000 + yearRaw : yearRaw);
+    return `${year}-${month}-${day}`;
+  }
+
+  const asNumber = Number(text);
+  if (!Number.isNaN(asNumber) && /^\d+(\.\d+)?$/.test(text)) {
+    const serialDate = new Date(Math.round((asNumber - 25569) * 86400 * 1000));
+    return Number.isNaN(serialDate.getTime()) ? null : dayKey(serialDate);
+  }
+
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? null : dayKey(parsed);
+}
+
 function countRowsByDay(data: RawRow[], dateIdx: number) {
   const result: Record<string, number> = {};
 
   for (const row of data) {
-    const date = parseDate(row[dateIdx]);
-    if (!date) continue;
-    const key = dayKey(date);
+    const key = parseDayKeyFromCell(row[dateIdx]);
+    if (!key) continue;
     result[key] = (result[key] || 0) + 1;
   }
 
@@ -487,10 +523,6 @@ function buildIndustryTimeline(
   statusIdx: number,
   normalizer: (value: RawCell) => string
 ): IndustryTimeline {
-  const datedRows = data
-    .map((row) => ({ row, date: parseDate(row[dateIdx]) }))
-    .filter((item) => item.date !== null) as Array<{ row: RawRow; date: Date }>;
-
   const stats: Record<
     string,
     {
@@ -501,11 +533,11 @@ function buildIndustryTimeline(
   > = {};
   const dayKeys = new Set<string>();
 
-  for (const item of datedRows) {
-    const row = item.row;
-    const rowDate = item.date;
+  for (const row of data) {
+    const key = parseDayKeyFromCell(row[dateIdx]);
+    if (!key) continue;
+
     const industry = normalizeIndustryName(row[industryIdx]);
-    const key = dayKey(rowDate);
 
     if (!stats[industry]) {
       stats[industry] = {
