@@ -3,8 +3,7 @@ import { MetricCard, StatusBadge } from "@/components/dashboard";
 import { DashboardTabs } from "@/components/dashboard-tabs";
 import { ManualRefreshButton } from "@/components/manual-refresh-button";
 import { getDashboardData } from "@/lib/dashboard-data";
-
-export const revalidate = 1800;
+export const dynamic = "force-dynamic";
 
 function formatDateTime(input: string) {
   return new Intl.DateTimeFormat("vi-VN", {

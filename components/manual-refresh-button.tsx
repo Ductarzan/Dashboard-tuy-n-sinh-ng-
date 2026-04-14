@@ -13,6 +13,9 @@ export function ManualRefreshButton() {
       className="manual-refresh-btn"
       onClick={() => {
         startTransition(() => {
+          const url = new URL(window.location.href);
+          url.searchParams.set("refreshTs", Date.now().toString());
+          router.replace(url.pathname + url.search);
           router.refresh();
         });
       }}
