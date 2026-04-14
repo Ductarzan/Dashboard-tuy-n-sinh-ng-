@@ -91,6 +91,26 @@ a {
   color: var(--muted);
 }
 
+.manual-refresh-btn {
+  margin-top: 12px;
+  width: 100%;
+  border: 1px solid rgba(22, 163, 74, 0.35);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: linear-gradient(130deg, rgba(22, 163, 74, 0.2), rgba(34, 197, 94, 0.14));
+  color: #166534;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.manual-refresh-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .metrics-grid,
 .dashboard-grid,
 .chart-grid {

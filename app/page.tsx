@@ -1,6 +1,7 @@
-﻿import { AutoRefresh } from "@/components/auto-refresh";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { MetricCard, StatusBadge } from "@/components/dashboard";
 import { DashboardTabs } from "@/components/dashboard-tabs";
+import { ManualRefreshButton } from "@/components/manual-refresh-button";
 import { getDashboardData } from "@/lib/dashboard-data";
 
 export const revalidate = 1800;
@@ -29,6 +30,7 @@ export default async function HomePage() {
             label={data.isDemo ? "Đang dùng dữ liệu demo" : "Đang đọc Google Sheets"}
             tone={data.isDemo ? "warn" : "ok"}
           />
+          <ManualRefreshButton />
           <p>Cập nhật lúc {formatDateTime(data.generatedAt)}</p>
           <p>Múi giờ {data.timezone}</p>
         </div>
@@ -50,3 +52,4 @@ export default async function HomePage() {
     </main>
   );
 }
+
