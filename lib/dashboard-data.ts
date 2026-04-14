@@ -141,6 +141,36 @@ function cellToString(value: RawCell) {
   return String(value).trim();
 }
 
+function normalizeHeaderLabel(value: RawCell) {
+  return cellToString(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function findColumnIndex(headerRow: unknown[] | undefined, candidates: string[], fallback: number) {
+  if (!headerRow || headerRow.length === 0) return fallback;
+
+  const normalizedHeaders = headerRow.map((cell) => normalizeHeaderLabel(cell as RawCell));
+  for (const candidate of candidates) {
+    const normalizedCandidate = normalizeHeaderLabel(candidate);
+    const exactIndex = normalizedHeaders.findIndex((header) => header === normalizedCandidate);
+    if (exactIndex >= 0) return exactIndex;
+
+    const includesIndex = normalizedHeaders.findIndex(
+      (header) =>
+        header !== "" &&
+        normalizedCandidate !== "" &&
+        (header.includes(normalizedCandidate) || normalizedCandidate.includes(header))
+    );
+    if (includesIndex >= 0) return includesIndex;
+  }
+
+  return fallback;
+}
+
 function normalizeStatus(value: RawCell) {
   if (!cellToString(value)) return "5. Chưa liên hệ";
   const str = cellToString(value).toLowerCase();
@@ -1180,9 +1210,52 @@ function buildPayload(
   isDemo: boolean,
   fbAds: FbAdsPayload
 ): DashboardPayload {
-  const cqData = cleanRowsByDateOrAnyValue(toRows(rawData.CQ_Status), 0, [2, 7, 8, 33]);
-  const ncqData = cleanRowsByDateOrAnyValue(toRows(rawData.NCQ_Status), 0, [3, 8, 9]);
-  const offlineData = cleanRowsByDateOrAnyValue(toRows(rawData.Offline_Status), 0, [1, 4, 6, 7]);
+  const cqHeader = (rawData.CQ_Status[0] || []) as RawRow;
+  const ncqHeader = (rawData.NCQ_Status[0] || []) as RawRow;
+  const offlineHeader = (rawData.Offline_Status[0] || []) as RawRow;
+
+  const cqDateIdx = findColumnIndex(cqHeader, ["Created time", "Ngày tạo"], 0);
+  const cqSourceIdx = findColumnIndex(cqHeader, ["Nguồn", "Source"], 1);
+  const cqSaleIdx = findColumnIndex(cqHeader, ["Sale", "Nhân viên", "Tư vấn viên"], 3);
+  const cqIndustry1Idx = findColumnIndex(cqHeader, ["Nguyện vọng 1", "Nguyện vọng 01"], 7);
+  const cqIndustry2Idx = findColumnIndex(cqHeader, ["Nguyện vọng 2", "Nguyện vọng 02"], 8);
+  const cqStatusIdx = findColumnIndex(cqHeader, ["Tình trạng", "Status"], 33);
+
+  const ncqDateIdx = findColumnIndex(ncqHeader, ["Created time", "Ngày tạo"], 0);
+  const ncqSourceIdx = findColumnIndex(ncqHeader, ["Nguồn", "Source"], 1);
+  const ncqSaleIdx = findColumnIndex(ncqHeader, ["Sale", "Nhân viên", "Tư vấn viên"], 2);
+  const ncqIndustryIdx = findColumnIndex(ncqHeader, ["Ngành", "Nguyện vọng 1", "Nguyện vọng 01"], 8);
+  const ncqStatusIdx = findColumnIndex(ncqHeader, ["Tình trạng", "Status"], 9);
+
+  const offlineDateIdx = findColumnIndex(offlineHeader, ["Created time", "Ngày tạo", "Lead"], 0);
+  const offlineSaleIdx = findColumnIndex(offlineHeader, ["Sale", "Nhân viên", "Tư vấn viên"], 9);
+  const offlineStatusIdx = findColumnIndex(offlineHeader, ["Tình trạng", "Status"], 4);
+  const offlineIndustry1Idx = findColumnIndex(offlineHeader, ["Nguyện vọng 1", "Nguyện vọng 01"], 6);
+  const offlineIndustry2Idx = findColumnIndex(offlineHeader, ["Nguyện vọng 2", "Nguyện vọng 02"], 7);
+
+  const cqRows = toRows(rawData.CQ_Status);
+  const ncqRows = toRows(rawData.NCQ_Status);
+  const offlineRows = toRows(rawData.Offline_Status);
+
+  const cqData = cleanRowsByDateOrAnyValue(cqRows, cqDateIdx, [
+    cqSourceIdx,
+    cqSaleIdx,
+    cqIndustry1Idx,
+    cqIndustry2Idx,
+    cqStatusIdx
+  ]);
+  const ncqData = cleanRowsByDateOrAnyValue(ncqRows, ncqDateIdx, [
+    ncqSourceIdx,
+    ncqSaleIdx,
+    ncqIndustryIdx,
+    ncqStatusIdx
+  ]);
+  const offlineData = cleanRowsByDateOrAnyValue(offlineRows, offlineDateIdx, [
+    offlineSaleIdx,
+    offlineStatusIdx,
+    offlineIndustry1Idx,
+    offlineIndustry2Idx
+  ]);
   const selfManaged = buildSelfManaged(toRows(rawData.Data_TuChu));
 
   const cqTotal = cqData.length;
@@ -1190,8 +1263,8 @@ function buildPayload(
   const offlineTotal = offlineData.length;
   const selfManagedTotal = selfManaged.totalCQ + selfManaged.totalNCQ;
   const fbStartDate = process.env.FB_ADS_START_DATE?.trim() || "2026-03-21";
-  const cqLeadsByDay = countRowsByDay(cqData, 0);
-  const ncqLeadsByDay = countRowsByDay(ncqData, 0);
+  const cqLeadsByDay = countRowsByDay(cqRows, cqDateIdx);
+  const ncqLeadsByDay = countRowsByDay(ncqRows, ncqDateIdx);
   const fbByDayMap = Object.fromEntries(fbAds.byDay.map((item) => [item.date, item]));
   const allDays = Array.from(
     new Set([...Object.keys(fbByDayMap), ...Object.keys(cqLeadsByDay), ...Object.keys(ncqLeadsByDay)])
@@ -1234,38 +1307,38 @@ function buildPayload(
     },
     details: {
       cq: {
-        ...buildInterestByColumn(cqData, [7, 8], 1),
-        sourceToInterest: buildRelationInterest(cqData, 1, [7, 8]),
-        saleToInterest: buildRelationInterest(cqData, 3, [7, 8])
+        ...buildInterestByColumn(cqData, [cqIndustry1Idx, cqIndustry2Idx], cqSourceIdx),
+        sourceToInterest: buildRelationInterest(cqData, cqSourceIdx, [cqIndustry1Idx, cqIndustry2Idx]),
+        saleToInterest: buildRelationInterest(cqData, cqSaleIdx, [cqIndustry1Idx, cqIndustry2Idx])
       },
       ncq: {
-        ...buildInterestByColumn(ncqData, [8], 1),
-        sourceToInterest: buildRelationInterest(ncqData, 1, [8]),
-        saleToInterest: buildRelationInterest(ncqData, 2, [8])
+        ...buildInterestByColumn(ncqData, [ncqIndustryIdx], ncqSourceIdx),
+        sourceToInterest: buildRelationInterest(ncqData, ncqSourceIdx, [ncqIndustryIdx]),
+        saleToInterest: buildRelationInterest(ncqData, ncqSaleIdx, [ncqIndustryIdx])
       },
       offline: {
-        ...buildInterestByColumn(offlineData, [6, 7]),
-        saleToInterest: buildRelationInterest(offlineData, 9, [6, 7])
+        ...buildInterestByColumn(offlineData, [offlineIndustry1Idx, offlineIndustry2Idx]),
+        saleToInterest: buildRelationInterest(offlineData, offlineSaleIdx, [offlineIndustry1Idx, offlineIndustry2Idx])
       }
     },
     industry: {
-      cq: buildIndustryTimeline(cqData, 0, [7], 33, normalizeStatus),
-      ncq: buildIndustryTimeline(ncqData, 0, [8], 9, normalizeStatus)
+      cq: buildIndustryTimeline(cqData, cqDateIdx, [cqIndustry1Idx], cqStatusIdx, normalizeStatus),
+      ncq: buildIndustryTimeline(ncqData, ncqDateIdx, [ncqIndustryIdx], ncqStatusIdx, normalizeStatus)
     },
     cq: {
-      saleBreakdown: countBy(cqData, 3),
-      statusBreakdown: countByStatus(cqData, 33, normalizeStatus),
-      matrix: buildSaleMatrix(cqData, 3, 33, normalizeStatus)
+      saleBreakdown: countBy(cqData, cqSaleIdx),
+      statusBreakdown: countByStatus(cqData, cqStatusIdx, normalizeStatus),
+      matrix: buildSaleMatrix(cqData, cqSaleIdx, cqStatusIdx, normalizeStatus)
     },
     ncq: {
-      saleBreakdown: countBy(ncqData, 2),
-      statusBreakdown: countByStatus(ncqData, 9, normalizeStatus),
-      matrix: buildSaleMatrix(ncqData, 2, 9, normalizeStatus)
+      saleBreakdown: countBy(ncqData, ncqSaleIdx),
+      statusBreakdown: countByStatus(ncqData, ncqStatusIdx, normalizeStatus),
+      matrix: buildSaleMatrix(ncqData, ncqSaleIdx, ncqStatusIdx, normalizeStatus)
     },
     offline: {
-      saleBreakdown: countBy(offlineData, 9),
-      statusBreakdown: countByStatus(offlineData, 4, normalizeOfflineStatus),
-      matrix: buildSaleMatrix(offlineData, 9, 4, normalizeOfflineStatus)
+      saleBreakdown: countBy(offlineData, offlineSaleIdx),
+      statusBreakdown: countByStatus(offlineData, offlineStatusIdx, normalizeOfflineStatus),
+      matrix: buildSaleMatrix(offlineData, offlineSaleIdx, offlineStatusIdx, normalizeOfflineStatus)
     },
     selfManaged,
     fbAds: mergedFbAds
