@@ -434,15 +434,18 @@ function parseDayKeyFromCell(value: RawCell): string | null {
 
   const text = typeof value === "string" ? value.trim() : String(value).trim();
   if (!text) return null;
+  const cleaned = text
+    .replace(/[\u200B-\u200D\u200E\u200F\uFEFF]/g, "")
+    .replace(/^'+|'+$/g, "")
+    .trim();
+  if (!cleaned) return null;
 
-  const isoPrefix = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
-  if (isoPrefix) {
-    return `${isoPrefix[1]}-${isoPrefix[2]}-${isoPrefix[3]}`;
+  const isoAny = cleaned.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (isoAny) {
+    return `${isoAny[1]}-${isoAny[2]}-${isoAny[3]}`;
   }
 
-  const viMatch = text.match(
-    /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
-  );
+  const viMatch = cleaned.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
   if (viMatch) {
     const day = String(Number(viMatch[1])).padStart(2, "0");
     const month = String(Number(viMatch[2])).padStart(2, "0");
@@ -451,13 +454,13 @@ function parseDayKeyFromCell(value: RawCell): string | null {
     return `${year}-${month}-${day}`;
   }
 
-  const asNumber = Number(text);
-  if (!Number.isNaN(asNumber) && /^\d+(\.\d+)?$/.test(text)) {
+  const asNumber = Number(cleaned);
+  if (!Number.isNaN(asNumber) && /^\d+(\.\d+)?$/.test(cleaned)) {
     const serialDate = new Date(Math.round((asNumber - 25569) * 86400 * 1000));
     return Number.isNaN(serialDate.getTime()) ? null : dayKey(serialDate);
   }
 
-  const parsed = new Date(text);
+  const parsed = new Date(cleaned);
   return Number.isNaN(parsed.getTime()) ? null : dayKey(parsed);
 }
 
