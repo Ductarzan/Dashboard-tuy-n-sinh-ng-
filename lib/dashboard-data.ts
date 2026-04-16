@@ -795,13 +795,15 @@ function extractMessageCount(actions: FbAction[] | undefined) {
     const type = (action.action_type || "").toLowerCase();
     if (!type) return sum;
 
-    const isMessageAction =
-      type.includes("messaging") ||
-      type.includes("onsite_conversion.messaging") ||
-      type.includes("message") ||
+    const isNewConversationAction =
+      type === "onsite_conversion.messaging_conversation_started_7d" ||
+      type === "onsite_conversion.messaging_conversation_started_1d" ||
+      type === "messaging_conversation_started_7d" ||
+      type === "messaging_conversation_started_1d" ||
+      type === "conversation_started" ||
       type.includes("conversation_started");
 
-    if (!isMessageAction) return sum;
+    if (!isNewConversationAction) return sum;
     return sum + parseNumber(action.value);
   }, 0);
 }
