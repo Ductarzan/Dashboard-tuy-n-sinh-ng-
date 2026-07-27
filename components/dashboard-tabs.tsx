@@ -704,7 +704,7 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                     </span>
                   </div>
                   <strong className="meta-card-val text-blue">{numberFmt.format(fanpageInfo.totalInteractions)}</strong>
-                  <span className="meta-card-sub">Tổng Like, Comment & Share từ API</span>
+                  <span className="meta-card-sub">Tổng Bình luận & Chia sẻ bài viết (30 ngày)</span>
                 </article>
               </div>
 
