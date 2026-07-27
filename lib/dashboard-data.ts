@@ -1103,17 +1103,17 @@ async function fetchMetaFanpagePayload(
   fbAds: FbAdsPayload
 ): Promise<MetaFanpagePayload> {
   const accountIdsEnv = process.env.FB_AD_ACCOUNT_IDS?.split(",").map((s) => s.trim()).filter(Boolean) || [];
-  const pageIdUsed = process.env.FB_PAGE_ID || "me";
+  const envPageId = process.env.FB_PAGE_ID?.trim() || "";
 
   const debugInfo: MetaFanpageDebugInfo = {
     hasAccessToken: Boolean(accessToken),
     accessTokenLength: accessToken.length,
     hasAdAccounts: accountIdsEnv.length > 0,
     adAccountsCount: accountIdsEnv.length,
-    pageIdUsed,
+    pageIdUsed: envPageId || "me/accounts -> Fanpage",
     apiHttpStatus: null,
-    apiEndpointAttempted: `https://graph.facebook.com/v20.0/${pageIdUsed}?fields=id,name,username,followers_count,fan_count`,
-    rawResponseOrError: "Chưa gọi API (AccessToken chưa được cài hoặc bị trống)."
+    apiEndpointAttempted: "",
+    rawResponseOrError: "Chưa gọi API."
   };
 
   const fallbackPosts: FanpagePost[] = [
@@ -1193,8 +1193,46 @@ async function fetchMetaFanpagePayload(
   }
 
   try {
-    const pageUrl = `https://graph.facebook.com/v20.0/${pageIdUsed}?fields=id,name,username,followers_count,fan_count&access_token=${encodeURIComponent(accessToken)}`;
-    
+    let targetPageId = envPageId;
+    let pageAccessToken = accessToken;
+
+    // Step 1: If FB_PAGE_ID isn't set, try me/accounts to resolve managed Fanpage
+    if (!targetPageId) {
+      const accountsUrl = `https://graph.facebook.com/v20.0/me/accounts?fields=id,name,username,access_token,fan_count,followers_count&access_token=${encodeURIComponent(accessToken)}`;
+      debugInfo.apiEndpointAttempted = "https://graph.facebook.com/v20.0/me/accounts";
+      const accRes = await fetch(accountsUrl, {
+        headers: { Accept: "application/json" },
+        cache: "no-store"
+      });
+      debugInfo.apiHttpStatus = accRes.status;
+      const accText = await accRes.text();
+      debugInfo.rawResponseOrError = accText;
+
+      if (accRes.ok) {
+        let accJson: any = {};
+        try {
+          accJson = JSON.parse(accText);
+        } catch (e) {}
+
+        if (accJson.data && Array.isArray(accJson.data) && accJson.data.length > 0) {
+          const dongDoPage = accJson.data.find((p: any) => p.name?.toLowerCase().includes("đông đô")) || accJson.data[0];
+          targetPageId = dongDoPage.id;
+          if (dongDoPage.access_token) pageAccessToken = dongDoPage.access_token;
+          if (dongDoPage.name) defaultPayload.name = dongDoPage.name;
+          if (dongDoPage.username) defaultPayload.handle = `@${dongDoPage.username}`;
+          if (typeof dongDoPage.followers_count === "number") defaultPayload.followersCount = dongDoPage.followers_count;
+          if (typeof dongDoPage.fan_count === "number") defaultPayload.fanCount = dongDoPage.fan_count;
+          debugInfo.pageIdUsed = `${targetPageId} (${dongDoPage.name})`;
+        }
+      }
+    }
+
+    // Step 2: Query target page details (without nonexisting followers_count if node is "me")
+    const pageNode = targetPageId || "me";
+    const pageFields = targetPageId ? "id,name,username,followers_count,fan_count" : "id,name,username,fan_count";
+    const pageUrl = `https://graph.facebook.com/v20.0/${pageNode}?fields=${pageFields}&access_token=${encodeURIComponent(pageAccessToken)}`;
+    debugInfo.apiEndpointAttempted = `https://graph.facebook.com/v20.0/${pageNode}?fields=${pageFields}`;
+
     const pageRes = await fetch(pageUrl, {
       headers: { Accept: "application/json" },
       cache: "no-store"
@@ -1214,11 +1252,11 @@ async function fetchMetaFanpagePayload(
       if (pageJson.username) defaultPayload.handle = `@${pageJson.username}`;
       if (typeof pageJson.followers_count === "number") defaultPayload.followersCount = pageJson.followers_count;
       if (typeof pageJson.fan_count === "number") defaultPayload.fanCount = pageJson.fan_count;
-    } else {
-      defaultPayload.error = `HTTP ${pageRes.status}: ${pageText.slice(0, 150)}`;
     }
 
-    const postsUrl = `https://graph.facebook.com/v20.0/${pageIdUsed}/published_posts?fields=id,message,created_time,shares,reactions.summary(true),comments.summary(true)&limit=5&access_token=${encodeURIComponent(accessToken)}`;
+    // Step 3: Fetch published posts
+    const postsNode = targetPageId || "me";
+    const postsUrl = `https://graph.facebook.com/v20.0/${postsNode}/published_posts?fields=id,message,created_time,shares,reactions.summary(true),comments.summary(true)&limit=5&access_token=${encodeURIComponent(pageAccessToken)}`;
     const postsRes = await fetch(postsUrl, {
       headers: { Accept: "application/json" },
       cache: "no-store"
