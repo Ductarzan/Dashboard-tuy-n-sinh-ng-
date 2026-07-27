@@ -77,6 +77,9 @@ export type FanpagePost = {
   title: string;
   type: string;
   date: string;
+  picture?: string;
+  permalink?: string;
+  views: number;
   reach: number;
   reactions: number;
   comments: number;
@@ -1221,11 +1224,11 @@ async function fetchMetaFanpagePayload(
     const thirtyDaysAgoSec = Math.floor((Date.now() - 30 * 24 * 3600 * 1000) / 1000);
     const postsNode = targetPageId || "me";
     const postQueries = [
-      { ep: "published_posts", fields: "id,message,story,created_time,shares,reactions.summary(true),comments.summary(true)" },
-      { ep: "posts", fields: "id,message,story,created_time,shares,reactions.summary(true),comments.summary(true)" },
-      { ep: "feed", fields: "id,message,story,created_time,shares,reactions.summary(true),comments.summary(true)" },
-      { ep: "posts", fields: "id,message,story,created_time,shares" },
-      { ep: "feed", fields: "id,message,story,created_time,shares" }
+      { ep: "published_posts", fields: "id,message,story,created_time,full_picture,permalink_url,status_type,shares,reactions.summary(true),comments.summary(true)" },
+      { ep: "posts", fields: "id,message,story,created_time,full_picture,permalink_url,status_type,shares,reactions.summary(true),comments.summary(true)" },
+      { ep: "feed", fields: "id,message,story,created_time,full_picture,permalink_url,status_type,shares,reactions.summary(true),comments.summary(true)" },
+      { ep: "posts", fields: "id,message,story,created_time,full_picture,permalink_url,status_type,shares" },
+      { ep: "feed", fields: "id,message,story,created_time,full_picture,permalink_url,status_type,shares" }
     ];
     let fetchedPostsData: any[] = [];
     let postsLog = "";
@@ -1256,17 +1259,21 @@ async function fetchMetaFanpagePayload(
     debugInfo.rawResponseOrError = `[Page Query]:\n${pageText}\n\n[Posts Query Log]:\n${postsLog}`;
 
     if (fetchedPostsData.length > 0) {
-      // Fetch detailed likes, reactions, comments, and reach insights for each post
+      // Fetch detailed likes, reactions, comments, picture, permalink & video views for each post
       const postsWithReactions = await Promise.all(
         fetchedPostsData.slice(0, 30).map(async (item) => {
           let reactions = item.reactions?.summary?.total_count ?? item.likes?.summary?.total_count ?? 0;
           let comments = item.comments?.summary?.total_count ?? 0;
           let shares = item.shares?.count ?? 0;
           let reach = 0;
+          let views = 0;
+          let picture = item.full_picture || item.picture || "";
+          let permalink = item.permalink_url || "";
+          let statusType = item.status_type || "";
 
           if (item.id) {
             try {
-              const singleUrl = `https://graph.facebook.com/v20.0/${item.id}?fields=shares,likes.limit(0).summary(true),reactions.limit(0).summary(true),comments.limit(0).summary(true),insights.metric(post_impressions_unique)&access_token=${encodeURIComponent(pageAccessToken)}`;
+              const singleUrl = `https://graph.facebook.com/v20.0/${item.id}?fields=shares,full_picture,permalink_url,status_type,likes.limit(0).summary(true),reactions.limit(0).summary(true),comments.limit(0).summary(true),insights.metric(post_impressions_unique,post_video_views)&access_token=${encodeURIComponent(pageAccessToken)}`;
               const sRes = await fetch(singleUrl, { headers: { Accept: "application/json" }, cache: "no-store" });
               if (sRes.ok) {
                 const sJson = (await sRes.json()) as any;
@@ -1278,14 +1285,23 @@ async function fetchMetaFanpagePayload(
 
                 if (typeof sJson.shares?.count === "number") shares = sJson.shares.count;
 
+                if (sJson.full_picture) picture = sJson.full_picture;
+                if (sJson.permalink_url) permalink = sJson.permalink_url;
+                if (sJson.status_type) statusType = sJson.status_type;
+
                 const imp = sJson.insights?.data?.find((m: any) => m.name === "post_impressions_unique");
                 if (imp?.values?.[0]?.value) {
                   reach = imp.values[0].value;
                 }
+
+                const vMetric = sJson.insights?.data?.find((m: any) => m.name === "post_video_views");
+                if (vMetric?.values?.[0]?.value) {
+                  views = vMetric.values[0].value;
+                }
               }
             } catch (e) {}
           }
-          return { ...item, reactions, comments, shares, reach };
+          return { ...item, reactions, comments, shares, reach, views, picture, permalink, statusType };
         })
       );
 
@@ -1299,15 +1315,22 @@ async function fetchMetaFanpagePayload(
         const comments = item.comments;
         const shares = item.shares;
         const reach = item.reach;
+        const views = item.views;
         const totalInteract = reactions + comments + shares;
         sumInteractions += totalInteract;
 
         const isRecruitment = message.toLowerCase().includes("tuyển sinh") || message.toLowerCase().includes("nhập học") || message.toLowerCase().includes("học bổng");
-        const postType = isRecruitment
+        const isVideo = item.statusType === "added_video" || message.toLowerCase().includes("video") || message.toLowerCase().includes("reel");
+        const isPhotos = item.statusType === "added_photos";
+        const isLink = item.statusType === "shared_story" || message.includes("http");
+
+        const postType = isVideo
+          ? "Thước phim / Video"
+          : isRecruitment
           ? "Thông báo / Tuyển sinh"
-          : message.toLowerCase().includes("video") || message.toLowerCase().includes("reel")
-          ? "Video / Reels"
-          : message.includes("http")
+          : isPhotos
+          ? "Nhiều ảnh / Album"
+          : isLink
           ? "Liên kết / Bài viết"
           : "Hình ảnh / Cập nhật";
         typeCounts[postType] = (typeCounts[postType] || 0) + 1;
@@ -1323,12 +1346,15 @@ async function fetchMetaFanpagePayload(
           title: message.length > 90 ? `${message.slice(0, 90)}...` : message,
           type: postType,
           date: dateStr,
+          picture: item.picture,
+          permalink: item.permalink,
+          views,
           reach,
           reactions,
           comments,
           shares,
           engagementRate: rate,
-          leadsGenerated: isRecruitment ? Math.max(0, Math.floor(totalInteract * 0.4)) : 0
+          leadsGenerated: 0
         };
       });
 
