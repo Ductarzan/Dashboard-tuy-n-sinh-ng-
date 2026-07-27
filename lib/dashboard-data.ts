@@ -1273,7 +1273,7 @@ async function fetchMetaFanpagePayload(
 
           if (item.id) {
             try {
-              const singleUrl = `https://graph.facebook.com/v20.0/${item.id}?fields=shares,full_picture,permalink_url,status_type,likes.limit(0).summary(true),reactions.limit(0).summary(true),comments.limit(0).summary(true),insights.metric(post_impressions_unique,post_video_views)&access_token=${encodeURIComponent(pageAccessToken)}`;
+              const singleUrl = `https://graph.facebook.com/v20.0/${item.id}?fields=shares,full_picture,permalink_url,status_type,likes.limit(0).summary(true),reactions.limit(0).summary(true),comments.limit(0).summary(true),insights.metric(post_media_view,post_video_views,post_clicks)&access_token=${encodeURIComponent(pageAccessToken)}`;
               const sRes = await fetch(singleUrl, { headers: { Accept: "application/json" }, cache: "no-store" });
               if (sRes.ok) {
                 const sJson = (await sRes.json()) as any;
@@ -1289,14 +1289,17 @@ async function fetchMetaFanpagePayload(
                 if (sJson.permalink_url) permalink = sJson.permalink_url;
                 if (sJson.status_type) statusType = sJson.status_type;
 
-                const imp = sJson.insights?.data?.find((m: any) => m.name === "post_impressions_unique");
-                if (imp?.values?.[0]?.value) {
-                  reach = imp.values[0].value;
+                const mvMetric = sJson.insights?.data?.find((m: any) => m.name === "post_media_view");
+                const vMetric = sJson.insights?.data?.find((m: any) => m.name === "post_video_views");
+                if (mvMetric?.values?.[0]?.value) {
+                  views = mvMetric.values[0].value;
+                } else if (vMetric?.values?.[0]?.value) {
+                  views = vMetric.values[0].value;
                 }
 
-                const vMetric = sJson.insights?.data?.find((m: any) => m.name === "post_video_views");
-                if (vMetric?.values?.[0]?.value) {
-                  views = vMetric.values[0].value;
+                const clickMetric = sJson.insights?.data?.find((m: any) => m.name === "post_clicks");
+                if (clickMetric?.values?.[0]?.value) {
+                  reach = clickMetric.values[0].value;
                 }
               }
             } catch (e) {}
