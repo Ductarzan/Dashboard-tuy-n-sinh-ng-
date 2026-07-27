@@ -1236,11 +1236,11 @@ async function fetchMetaFanpagePayload(
       }
     }
 
-    // Step 2: Query target page details and obtain Page Access Token
+    // Step 2: Query target page details and obtain Page Access Token via Meta API v25.0
     const pageNode = targetPageId || "me";
     const pageFields = targetPageId ? "id,name,username,followers_count,fan_count,access_token" : "id,name,username,fan_count";
-    const pageUrl = `https://graph.facebook.com/v20.0/${pageNode}?fields=${pageFields}&access_token=${encodeURIComponent(accessToken)}`;
-    debugInfo.apiEndpointAttempted = `https://graph.facebook.com/v20.0/${pageNode}?fields=${pageFields}`;
+    const pageUrl = `https://graph.facebook.com/v25.0/${pageNode}?fields=${pageFields}&access_token=${encodeURIComponent(accessToken)}`;
+    debugInfo.apiEndpointAttempted = `https://graph.facebook.com/v25.0/${pageNode}?fields=${pageFields}`;
 
     const pageRes = await fetch(pageUrl, {
       headers: { Accept: "application/json" },
@@ -1264,7 +1264,20 @@ async function fetchMetaFanpagePayload(
       if (pageJson.access_token) pageAccessToken = pageJson.access_token;
     }
 
-    // Step 3: Fetch posts within the last 30 days (limit=50)
+    // Step 3: Query Page Insights via official Meta API v25.0 replacement metrics (page_total_media_view_unique, page_media_view)
+    try {
+      const v25InsightsUrl = `https://graph.facebook.com/v25.0/${pageNode}/insights?metric=page_total_media_view_unique,page_media_view&period=days_28&access_token=${encodeURIComponent(pageAccessToken)}`;
+      const v25Res = await fetch(v25InsightsUrl, { headers: { Accept: "application/json" }, cache: "no-store" });
+      if (v25Res.ok) {
+        const v25Json = (await v25Res.json()) as any;
+        const totalMediaViewMetric = v25Json.data?.find((m: any) => m.name === "page_total_media_view_unique");
+        if (totalMediaViewMetric?.values?.[0]?.value) {
+          payload.totalReach = totalMediaViewMetric.values[0].value;
+        }
+      }
+    } catch (e) {}
+
+    // Step 4: Fetch posts within the last 30 days (limit=50) via v25.0
     const thirtyDaysAgoSec = Math.floor((Date.now() - 30 * 24 * 3600 * 1000) / 1000);
     const postsNode = targetPageId || "me";
     const postQueries = [
@@ -1278,7 +1291,7 @@ async function fetchMetaFanpagePayload(
     let postsLog = "";
 
     for (const q of postQueries) {
-      const postsUrl = `https://graph.facebook.com/v20.0/${postsNode}/${q.ep}?fields=${q.fields}&limit=50&since=${thirtyDaysAgoSec}&access_token=${encodeURIComponent(pageAccessToken)}`;
+      const postsUrl = `https://graph.facebook.com/v25.0/${postsNode}/${q.ep}?fields=${q.fields}&limit=50&since=${thirtyDaysAgoSec}&access_token=${encodeURIComponent(pageAccessToken)}`;
       const postsRes = await fetch(postsUrl, {
         headers: { Accept: "application/json" },
         cache: "no-store"
