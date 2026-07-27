@@ -1199,27 +1199,28 @@ async function fetchMetaFanpagePayload(
       if (pageJson.access_token) pageAccessToken = pageJson.access_token;
     }
 
-    // Step 3: Fetch posts with multiple endpoints and field fallbacks using Page Access Token
+    // Step 3: Fetch posts within the last 30 days (limit=50)
+    const thirtyDaysAgoSec = Math.floor((Date.now() - 30 * 24 * 3600 * 1000) / 1000);
     const postsNode = targetPageId || "me";
     const postQueries = [
       { ep: "published_posts", fields: "id,message,story,created_time,shares,reactions.summary(true),comments.summary(true)" },
       { ep: "posts", fields: "id,message,story,created_time,shares,reactions.summary(true),comments.summary(true)" },
       { ep: "feed", fields: "id,message,story,created_time,shares,reactions.summary(true),comments.summary(true)" },
-      { ep: "feed", fields: "id,message,story,created_time,shares" },
-      { ep: "posts", fields: "id,message,story,created_time,shares" }
+      { ep: "posts", fields: "id,message,story,created_time,shares" },
+      { ep: "feed", fields: "id,message,story,created_time,shares" }
     ];
     let fetchedPostsData: any[] = [];
     let postsLog = "";
 
     for (const q of postQueries) {
-      const postsUrl = `https://graph.facebook.com/v20.0/${postsNode}/${q.ep}?fields=${q.fields}&limit=10&access_token=${encodeURIComponent(pageAccessToken)}`;
+      const postsUrl = `https://graph.facebook.com/v20.0/${postsNode}/${q.ep}?fields=${q.fields}&limit=50&since=${thirtyDaysAgoSec}&access_token=${encodeURIComponent(pageAccessToken)}`;
       const postsRes = await fetch(postsUrl, {
         headers: { Accept: "application/json" },
         cache: "no-store"
       });
 
       const postsText = await postsRes.text();
-      postsLog += `[${q.ep} (${q.fields.slice(0, 25)}...): HTTP ${postsRes.status}] ${postsText.slice(0, 180)}\n`;
+      postsLog += `[${q.ep}: HTTP ${postsRes.status}] ${postsText.slice(0, 180)}\n`;
 
       if (postsRes.ok) {
         let postsJson: any = {};

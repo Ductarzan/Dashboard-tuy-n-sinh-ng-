@@ -39,6 +39,8 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
   const [active, setActive] = useState<TabKey>("online");
   const [industryPage, setIndustryPage] = useState(0);
   const [fbPage, setFbPage] = useState(0);
+  const [metaPostPage, setMetaPostPage] = useState(0);
+
   const industryPageSize = 4;
   const allIndustryDays = Array.from(
     new Set([...data.industry.cq.days, ...data.industry.ncq.days])
@@ -84,6 +86,14 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
       rawResponseOrError: "Chưa kết nối API"
     }
   };
+
+  const metaPostPageSize = 5;
+  const totalMetaPostPages = Math.max(1, Math.ceil(fanpageInfo.posts.length / metaPostPageSize));
+  const safeMetaPostPage = Math.min(metaPostPage, totalMetaPostPages - 1);
+  const visibleMetaPosts = fanpageInfo.posts.slice(
+    safeMetaPostPage * metaPostPageSize,
+    (safeMetaPostPage + 1) * metaPostPageSize
+  );
 
   // Real Meta Ads KPI calculations (Zero hardcoded values)
   const totalAdsLeads = (data.fbAds?.totals?.cqLeadsAllTime || 0) + (data.fbAds?.totals?.ncqLeadsAllTime || 0);
@@ -637,49 +647,6 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
               </div>
             </div>
 
-            {/* Meta Graph API Diagnostic & Debug Box */}
-            <div className="subpanel debug-panel margin-bottom-subpanel">
-              <h3>Diagnostic & Debug: Kết nối Meta Graph API</h3>
-              <p className="detail-note">
-                Đối chiếu trạng thái Token, HTTP Code và Phản hồi trực tiếp từ Meta API để phát hiện nhanh nguyên nhân lỗi
-              </p>
-              <div className="debug-grid">
-                <article className="debug-card">
-                  <p>FB_ACCESS_TOKEN</p>
-                  <strong className={fanpageInfo.debug?.hasAccessToken ? "text-green" : "text-red"}>
-                    {fanpageInfo.debug?.hasAccessToken
-                      ? `Đã cài (${fanpageInfo.debug.accessTokenLength} kí tự)`
-                      : "Chưa phát hiện token"}
-                  </strong>
-                </article>
-                <article className="debug-card">
-                  <p>Tài khoản Meta Ads</p>
-                  <strong className={fanpageInfo.debug?.hasAdAccounts ? "text-blue" : "text-muted"}>
-                    {fanpageInfo.debug?.hasAdAccounts
-                      ? `${fanpageInfo.debug.adAccountsCount} tài khoản`
-                      : "Dùng danh sách mặc định"}
-                  </strong>
-                </article>
-                <article className="debug-card">
-                  <p>FB_PAGE_ID</p>
-                  <strong>{fanpageInfo.debug?.pageIdUsed || "1374765252763543"}</strong>
-                </article>
-                <article className="debug-card">
-                  <p>Meta API HTTP Status</p>
-                  <strong className={fanpageInfo.debug?.apiHttpStatus === 200 ? "text-green" : "text-red"}>
-                    {fanpageInfo.debug?.apiHttpStatus ? `HTTP ${fanpageInfo.debug.apiHttpStatus}` : "Chưa nhận phản hồi"}
-                  </strong>
-                </article>
-              </div>
-
-              <div className="debug-log-box">
-                <p className="debug-log-title">Phản hồi chi tiết từ Meta Graph API (raw body):</p>
-                <pre className="debug-code">
-                  {fanpageInfo.debug?.rawResponseOrError || "Chưa có nhật ký phản hồi."}
-                </pre>
-              </div>
-            </div>
-
             <section className="detail-section">
               <SectionHeading
                 title={`Meta Fanpage Analytics - ${fanpageInfo.name}`}
@@ -784,12 +751,54 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                 </div>
               </div>
 
-              {/* Bảng Bài viết Fanpage Trường Đại học Đông Đô */}
+              {/* Bảng Bài viết Fanpage Trường Đại học Đông Đô với Pagination */}
               <div className="subpanel margin-top-subpanel">
-                <div className="subpanel-header">
-                  <h3>Báo cáo hiệu quả Bài đăng Fanpage - {fanpageInfo.name}</h3>
-                  <p className="detail-note">Danh sách bài viết trực tiếp từ Meta Graph API (không sử dụng dữ liệu mẫu)</p>
+                <div className="subpanel-header flex-between">
+                  <div>
+                    <h3>Báo cáo hiệu quả Bài đăng Fanpage - {fanpageInfo.name}</h3>
+                    <p className="detail-note">
+                      Tất cả bài viết trong 30 ngày gần nhất năm 2026 trực tiếp từ Meta Graph API (Tổng {fanpageInfo.posts.length} bài)
+                    </p>
+                  </div>
+                  {fanpageInfo.posts.length > 0 ? (
+                    <div className="industry-pager" aria-label="Điều hướng trang bài viết">
+                      <button
+                        type="button"
+                        className="pager-button"
+                        onClick={() => setMetaPostPage((prev) => Math.max(0, prev - 1))}
+                        disabled={safeMetaPostPage === 0}
+                      >
+                        ‹ Trước
+                      </button>
+                      <label className="pager-select-wrap">
+                        <span>Trang</span>
+                        <select
+                          className="pager-select"
+                          value={safeMetaPostPage}
+                          onChange={(event) => setMetaPostPage(Number(event.target.value))}
+                        >
+                          {Array.from({ length: totalMetaPostPages }, (_, index) => (
+                            <option key={index} value={index}>
+                              {index + 1}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <span className="pager-info">
+                        Trang {safeMetaPostPage + 1}/{totalMetaPostPages}
+                      </span>
+                      <button
+                        type="button"
+                        className="pager-button"
+                        onClick={() => setMetaPostPage((prev) => Math.min(totalMetaPostPages - 1, prev + 1))}
+                        disabled={safeMetaPostPage >= totalMetaPostPages - 1}
+                      >
+                        Sau ›
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
+
                 <div className="table-wrap">
                   <table className="data-table">
                     <thead>
@@ -808,12 +817,12 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                       {fanpageInfo.posts.length === 0 ? (
                         <tr>
                           <td colSpan={8} className="empty-cell" style={{ padding: "24px", textAlign: "center" }}>
-                            Chưa có bài viết trực tiếp nào được cấp quyền trả về từ Meta API.<br />
+                            Chưa có bài viết trực tiếp nào trong 30 ngày gần nhất được trả về từ Meta API.<br />
                             Dữ liệu <strong>Lượt theo dõi ({numberFmt.format(fanpageInfo.followersCount)})</strong> & <strong>Lượt thích trang ({numberFmt.format(fanpageInfo.fanCount)})</strong> đã được đồng bộ 100% từ Meta API.
                           </td>
                         </tr>
                       ) : (
-                        fanpageInfo.posts.map((post) => (
+                        visibleMetaPosts.map((post) => (
                           <tr key={post.id}>
                             <td className="font-medium max-w-title">{post.title}</td>
                             <td><span className="post-type-chip">{post.type}</span></td>
