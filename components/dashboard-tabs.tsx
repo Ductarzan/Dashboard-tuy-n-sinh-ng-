@@ -803,20 +803,17 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Nội dung & Ảnh bài viết (Meta API)</th>
+                        <th>Nội dung & Bài viết gốc (Meta API)</th>
                         <th>Loại bài viết</th>
                         <th>Ngày đăng</th>
-                        <th className="num-col">Lượt xem (Views)</th>
-                        <th className="num-col">Lượt tiếp cận (Reach)</th>
-                        <th className="num-col">Thích & Cảm xúc</th>
-                        <th className="num-col">Bình luận & Share</th>
-                        <th className="num-col">Tỷ lệ tương tác</th>
+                        <th className="num-col">Bình luận & Chia sẻ</th>
+                        <th className="num-col">Tổng lượt Tương tác</th>
                       </tr>
                     </thead>
                     <tbody>
                       {fanpageInfo.posts.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="empty-cell" style={{ padding: "24px", textAlign: "center" }}>
+                          <td colSpan={5} className="empty-cell" style={{ padding: "24px", textAlign: "center" }}>
                             Chưa có bài viết trực tiếp nào trong 30 ngày gần nhất được trả về từ Meta API.<br />
                             Dữ liệu <strong>Lượt theo dõi ({numberFmt.format(fanpageInfo.followersCount)})</strong> & <strong>Lượt thích trang ({numberFmt.format(fanpageInfo.fanCount)})</strong> đã được đồng bộ 100% từ Meta API.
                           </td>
@@ -869,11 +866,8 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                             </td>
                             <td><span className="post-type-chip">{post.type}</span></td>
                             <td>{post.date}</td>
-                            <td className="num-col bold text-purple">{numberFmt.format(post.views)}</td>
-                            <td className="num-col bold">{numberFmt.format(post.reach)}</td>
-                            <td className="num-col text-green bold">{numberFmt.format(post.reactions)}</td>
-                            <td className="num-col">{numberFmt.format(post.comments + post.shares)}</td>
-                            <td className="num-col text-blue bold">{post.engagementRate}</td>
+                            <td className="num-col bold text-green">{numberFmt.format(post.comments + post.shares)}</td>
+                            <td className="num-col bold text-blue">{post.engagementRate}</td>
                           </tr>
                         ))
                       )}
