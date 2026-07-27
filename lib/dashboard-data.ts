@@ -1238,15 +1238,43 @@ async function fetchMetaFanpagePayload(
     debugInfo.rawResponseOrError = `[Page Query]:\n${pageText}\n\n[Posts Query Log]:\n${postsLog}`;
 
     if (fetchedPostsData.length > 0) {
+      // Fetch detailed likes, reactions, and comments for each post
+      const postsWithReactions = await Promise.all(
+        fetchedPostsData.slice(0, 30).map(async (item) => {
+          let reactions = item.reactions?.summary?.total_count ?? item.likes?.summary?.total_count ?? 0;
+          let comments = item.comments?.summary?.total_count ?? 0;
+          let shares = item.shares?.count ?? 0;
+
+          if (reactions === 0 && comments === 0 && item.id) {
+            try {
+              const singleUrl = `https://graph.facebook.com/v20.0/${item.id}?fields=shares,likes.summary(true),reactions.summary(true),comments.summary(true)&access_token=${encodeURIComponent(pageAccessToken)}`;
+              const sRes = await fetch(singleUrl, { headers: { Accept: "application/json" }, cache: "no-store" });
+              if (sRes.ok) {
+                const sJson = (await sRes.json()) as {
+                  reactions?: { summary?: { total_count?: number } };
+                  likes?: { summary?: { total_count?: number } };
+                  comments?: { summary?: { total_count?: number } };
+                  shares?: { count?: number };
+                };
+                reactions = sJson.reactions?.summary?.total_count ?? sJson.likes?.summary?.total_count ?? 0;
+                comments = sJson.comments?.summary?.total_count ?? 0;
+                shares = sJson.shares?.count ?? shares;
+              }
+            } catch (e) {}
+          }
+          return { ...item, reactions, comments, shares };
+        })
+      );
+
       let sumInteractions = 0;
       const typeCounts: Record<string, number> = {};
 
-      const livePosts: FanpagePost[] = fetchedPostsData.map((item, idx) => {
+      const livePosts: FanpagePost[] = postsWithReactions.map((item, idx) => {
         const message = item.message || item.story || `Bài viết Tuyển sinh #${idx + 1}`;
         const dateStr = item.created_time ? new Date(item.created_time).toLocaleDateString("vi-VN") : "Gần đây";
-        const reactions = item.reactions?.summary?.total_count || 0;
-        const comments = item.comments?.summary?.total_count || 0;
-        const shares = item.shares?.count || 0;
+        const reactions = item.reactions;
+        const comments = item.comments;
+        const shares = item.shares;
         const totalInteract = reactions + comments + shares;
         sumInteractions += totalInteract;
 
@@ -1259,6 +1287,8 @@ async function fetchMetaFanpagePayload(
           : "Hình ảnh / Cập nhật";
         typeCounts[postType] = (typeCounts[postType] || 0) + 1;
 
+        const rate = totalInteract > 0 ? `${totalInteract} Tương tác` : "0";
+
         return {
           id: item.id || `post-${idx}`,
           title: message.length > 90 ? `${message.slice(0, 90)}...` : message,
@@ -1268,7 +1298,7 @@ async function fetchMetaFanpagePayload(
           reactions,
           comments,
           shares,
-          engagementRate: reactions > 0 ? "Live" : "0%",
+          engagementRate: rate,
           leadsGenerated: 0
         };
       });
