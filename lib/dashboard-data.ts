@@ -1273,12 +1273,17 @@ async function fetchMetaFanpagePayload(
 
           if (item.id) {
             try {
-              const singleUrl = `https://graph.facebook.com/v20.0/${item.id}?fields=shares,full_picture,permalink_url,status_type,likes.limit(0).summary(true),reactions.limit(0).summary(true),comments.limit(0).summary(true),insights.metric(post_media_view,post_video_views,post_clicks)&access_token=${encodeURIComponent(pageAccessToken)}`;
+              const singleUrl = `https://graph.facebook.com/v20.0/${item.id}?fields=shares,full_picture,permalink_url,status_type,likes.limit(0).summary(true),reactions.limit(0).summary(true),comments.limit(0).summary(true),insights.metric(post_reactions_like_total,post_reactions_by_type_total,post_clicks,post_media_view,post_video_views)&access_token=${encodeURIComponent(pageAccessToken)}`;
               const sRes = await fetch(singleUrl, { headers: { Accept: "application/json" }, cache: "no-store" });
               if (sRes.ok) {
                 const sJson = (await sRes.json()) as any;
-                const rCount = sJson.reactions?.summary?.total_count ?? sJson.likes?.summary?.total_count;
-                if (typeof rCount === "number") reactions = rCount;
+                const likeMetric = sJson.insights?.data?.find((m: any) => m.name === "post_reactions_like_total");
+                if (likeMetric?.values?.[0]?.value) {
+                  reactions = likeMetric.values[0].value;
+                } else {
+                  const rCount = sJson.reactions?.summary?.total_count ?? sJson.likes?.summary?.total_count;
+                  if (typeof rCount === "number") reactions = rCount;
+                }
 
                 const cCount = sJson.comments?.summary?.total_count;
                 if (typeof cCount === "number") comments = cCount;
