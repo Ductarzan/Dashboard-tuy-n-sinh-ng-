@@ -656,7 +656,7 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
               <div className="meta-fanpage-grid">
                 <article className="meta-card">
                   <div className="meta-card-header">
-                    <span className="meta-card-label">Fanpage Followers</span>
+                    <span className="meta-card-label">Người theo dõi & Thích trang (Followers & Fans)</span>
                     <span className="meta-icon-badge blue">
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                         <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H7.5v-3H10V9.5C10 7.01 11.49 5.65 13.75 5.65c1.08 0 2.21.19 2.21.19v2.43h-1.25c-1.23 0-1.61.77-1.61 1.56V12h2.74l-.44 3h-2.3v6.8c4.56-.93 8-4.96 8-9.8z"/>
@@ -664,25 +664,12 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                     </span>
                   </div>
                   <strong className="meta-card-val text-blue">{numberFmt.format(fanpageInfo.followersCount)}</strong>
-                  <span className="meta-card-sub text-green">100% dữ liệu thực từ Meta API</span>
+                  <span className="meta-card-sub text-green">Fan Count: {numberFmt.format(fanpageInfo.fanCount)} (100% Meta API)</span>
                 </article>
 
                 <article className="meta-card">
                   <div className="meta-card-header">
-                    <span className="meta-card-label">Lượt thích Trang (Fan Count)</span>
-                    <span className="meta-icon-badge amber">
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
-                      </svg>
-                    </span>
-                  </div>
-                  <strong className="meta-card-val">{numberFmt.format(fanpageInfo.fanCount)}</strong>
-                  <span className="meta-card-sub">Lượt thích chính thức từ Meta API</span>
-                </article>
-
-                <article className="meta-card">
-                  <div className="meta-card-header">
-                    <span className="meta-card-label">Số lượt tiếp cận (30 ngày gần nhất)</span>
+                    <span className="meta-card-label">Số lượt tiếp cận & Xem phương tiện (30 ngày)</span>
                     <span className="meta-icon-badge green">
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -691,27 +678,13 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                     </span>
                   </div>
                   <strong className="meta-card-val text-green">{numberFmt.format(fanpageInfo.totalReach)}</strong>
-                  <span className="meta-card-sub text-green">{fanpageInfo.reachComparison || "Organic + Paid (30 ngày)"}</span>
-                </article>
-
-                <article className="meta-card">
-                  <div className="meta-card-header">
-                    <span className="meta-card-label">Lượt xem Phương tiện Trang (Meta v25 API)</span>
-                    <span className="meta-icon-badge purple">
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polygon points="23 7 16 12 23 17 23 7" />
-                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                      </svg>
-                    </span>
-                  </div>
-                  <strong className="meta-card-val text-purple">{numberFmt.format(fanpageInfo.totalReach)}</strong>
-                  <span className="meta-card-sub text-purple">Chỉ số chuẩn Meta v25 (page_media_view)</span>
+                  <span className="meta-card-sub text-green">{fanpageInfo.reachComparison || "Chỉ số page_media_view (30 ngày)"}</span>
                 </article>
 
                 <article className="meta-card">
                   <div className="meta-card-header">
                     <span className="meta-card-label">Lượt tương tác Bài viết</span>
-                    <span className="meta-icon-badge blue">
+                    <span className="meta-icon-badge purple">
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                       </svg>
@@ -724,7 +697,7 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                 <article className="meta-card">
                   <div className="meta-card-header">
                     <span className="meta-card-label">Tổng Lead Tuyển sinh (Meta Ads)</span>
-                    <span className="meta-icon-badge green">
+                    <span className="meta-icon-badge amber">
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                         <circle cx="9" cy="7" r="4" />
@@ -733,8 +706,8 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                       </svg>
                     </span>
                   </div>
-                  <strong className="meta-card-val text-green">{numberFmt.format(totalAdsLeads)} Lead</strong>
-                  <span className="meta-card-sub text-green">CPL trung bình: {cplValue > 0 ? currency.format(cplValue) : "115.753 ₫"}/Lead</span>
+                  <strong className="meta-card-val text-amber">{numberFmt.format(totalAdsLeads)} Lead</strong>
+                  <span className="meta-card-sub text-amber">CPL trung bình: {cplValue > 0 ? currency.format(cplValue) : "115.753 ₫"}/Lead</span>
                 </article>
               </div>
 
