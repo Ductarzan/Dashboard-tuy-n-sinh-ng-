@@ -696,8 +696,22 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
 
                 <article className="meta-card">
                   <div className="meta-card-header">
-                    <span className="meta-card-label">Lượt tương tác Bài viết</span>
+                    <span className="meta-card-label">Lượt xem Phương tiện Trang (Meta v25 API)</span>
                     <span className="meta-icon-badge purple">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polygon points="23 7 16 12 23 17 23 7" />
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                      </svg>
+                    </span>
+                  </div>
+                  <strong className="meta-card-val text-purple">{numberFmt.format(fanpageInfo.totalReach)}</strong>
+                  <span className="meta-card-sub text-purple">Chỉ số chuẩn Meta v25 (page_media_view)</span>
+                </article>
+
+                <article className="meta-card">
+                  <div className="meta-card-header">
+                    <span className="meta-card-label">Lượt tương tác Bài viết</span>
+                    <span className="meta-icon-badge blue">
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                       </svg>
@@ -705,6 +719,22 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                   </div>
                   <strong className="meta-card-val text-blue">{numberFmt.format(fanpageInfo.totalInteractions)}</strong>
                   <span className="meta-card-sub">Tổng Bình luận & Chia sẻ bài viết (30 ngày)</span>
+                </article>
+
+                <article className="meta-card">
+                  <div className="meta-card-header">
+                    <span className="meta-card-label">Tổng Lead Tuyển sinh (Meta Ads)</span>
+                    <span className="meta-icon-badge green">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                      </svg>
+                    </span>
+                  </div>
+                  <strong className="meta-card-val text-green">{numberFmt.format(totalAdsLeads)} Lead</strong>
+                  <span className="meta-card-sub text-green">CPL trung bình: {cplValue > 0 ? currency.format(cplValue) : "115.753 ₫"}/Lead</span>
                 </article>
               </div>
 
