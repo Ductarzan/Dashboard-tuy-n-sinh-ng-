@@ -1259,78 +1259,22 @@ async function fetchMetaFanpagePayload(
     debugInfo.rawResponseOrError = `[Page Query]:\n${pageText}\n\n[Posts Query Log]:\n${postsLog}`;
 
     if (fetchedPostsData.length > 0) {
-      // Fetch detailed likes, reactions, comments, picture, permalink & video views for each post
-      const postsWithReactions = await Promise.all(
-        fetchedPostsData.slice(0, 30).map(async (item) => {
-          let reactions = item.reactions?.summary?.total_count ?? item.likes?.summary?.total_count ?? 0;
-          let comments = item.comments?.summary?.total_count ?? 0;
-          let shares = item.shares?.count ?? 0;
-          let reach = 0;
-          let views = 0;
-          let picture = item.full_picture || item.picture || "";
-          let permalink = item.permalink_url || "";
-          let statusType = item.status_type || "";
-
-          if (item.id) {
-            try {
-              const singleUrl = `https://graph.facebook.com/v20.0/${item.id}?fields=shares,full_picture,permalink_url,status_type,likes.limit(0).summary(true),reactions.limit(0).summary(true),comments.limit(0).summary(true),insights.metric(post_reactions_like_total,post_reactions_by_type_total,post_clicks,post_media_view,post_video_views)&access_token=${encodeURIComponent(pageAccessToken)}`;
-              const sRes = await fetch(singleUrl, { headers: { Accept: "application/json" }, cache: "no-store" });
-              if (sRes.ok) {
-                const sJson = (await sRes.json()) as any;
-                const likeMetric = sJson.insights?.data?.find((m: any) => m.name === "post_reactions_like_total");
-                if (likeMetric?.values?.[0]?.value) {
-                  reactions = likeMetric.values[0].value;
-                } else {
-                  const rCount = sJson.reactions?.summary?.total_count ?? sJson.likes?.summary?.total_count;
-                  if (typeof rCount === "number") reactions = rCount;
-                }
-
-                const cCount = sJson.comments?.summary?.total_count;
-                if (typeof cCount === "number") comments = cCount;
-
-                if (typeof sJson.shares?.count === "number") shares = sJson.shares.count;
-
-                if (sJson.full_picture) picture = sJson.full_picture;
-                if (sJson.permalink_url) permalink = sJson.permalink_url;
-                if (sJson.status_type) statusType = sJson.status_type;
-
-                const mvMetric = sJson.insights?.data?.find((m: any) => m.name === "post_media_view");
-                const vMetric = sJson.insights?.data?.find((m: any) => m.name === "post_video_views");
-                if (mvMetric?.values?.[0]?.value) {
-                  views = mvMetric.values[0].value;
-                } else if (vMetric?.values?.[0]?.value) {
-                  views = vMetric.values[0].value;
-                }
-
-                const clickMetric = sJson.insights?.data?.find((m: any) => m.name === "post_clicks");
-                if (clickMetric?.values?.[0]?.value) {
-                  reach = clickMetric.values[0].value;
-                }
-              }
-            } catch (e) {}
-          }
-          return { ...item, reactions, comments, shares, reach, views, picture, permalink, statusType };
-        })
-      );
-
       let sumInteractions = 0;
       const typeCounts: Record<string, number> = {};
 
-      const livePosts: FanpagePost[] = postsWithReactions.map((item, idx) => {
+      const livePosts: FanpagePost[] = fetchedPostsData.map((item, idx) => {
         const message = item.message || item.story || `Bài viết Tuyển sinh #${idx + 1}`;
         const dateStr = item.created_time ? new Date(item.created_time).toLocaleDateString("vi-VN") : "Gần đây";
-        const reactions = item.reactions;
-        const comments = item.comments;
-        const shares = item.shares;
-        const reach = item.reach;
-        const views = item.views;
+        const reactions = item.reactions?.summary?.total_count ?? item.likes?.summary?.total_count ?? 0;
+        const comments = item.comments?.summary?.total_count ?? 0;
+        const shares = item.shares?.count ?? 0;
         const totalInteract = reactions + comments + shares;
         sumInteractions += totalInteract;
 
         const isRecruitment = message.toLowerCase().includes("tuyển sinh") || message.toLowerCase().includes("nhập học") || message.toLowerCase().includes("học bổng");
-        const isVideo = item.statusType === "added_video" || message.toLowerCase().includes("video") || message.toLowerCase().includes("reel");
-        const isPhotos = item.statusType === "added_photos";
-        const isLink = item.statusType === "shared_story" || message.includes("http");
+        const isVideo = item.status_type === "added_video" || message.toLowerCase().includes("video") || message.toLowerCase().includes("reel");
+        const isPhotos = item.status_type === "added_photos";
+        const isLink = item.status_type === "shared_story" || message.includes("http");
 
         const postType = isVideo
           ? "Thước phim / Video"
@@ -1343,21 +1287,17 @@ async function fetchMetaFanpagePayload(
           : "Hình ảnh / Cập nhật";
         typeCounts[postType] = (typeCounts[postType] || 0) + 1;
 
-        const rate = reach > 0
-          ? `${((totalInteract / reach) * 100).toFixed(1)}%`
-          : totalInteract > 0
-          ? `${totalInteract} Tương tác`
-          : "0%";
+        const rate = totalInteract > 0 ? `${totalInteract} Tương tác` : "0%";
 
         return {
           id: item.id || `post-${idx}`,
           title: message.length > 90 ? `${message.slice(0, 90)}...` : message,
           type: postType,
           date: dateStr,
-          picture: item.picture,
-          permalink: item.permalink,
-          views,
-          reach,
+          picture: item.full_picture || item.picture || "",
+          permalink: item.permalink_url || "",
+          views: 0,
+          reach: 0,
           reactions,
           comments,
           shares,
