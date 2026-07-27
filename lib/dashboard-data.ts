@@ -1198,60 +1198,76 @@ async function fetchMetaFanpagePayload(
       if (typeof pageJson.fan_count === "number") payload.fanCount = pageJson.fan_count;
     }
 
-    // Step 3: Fetch published posts
+    // Step 3: Fetch published posts with fallbacks: published_posts -> posts -> feed
     const postsNode = targetPageId || "me";
-    const postsUrl = `https://graph.facebook.com/v20.0/${postsNode}/published_posts?fields=id,message,created_time,shares,reactions.summary(true),comments.summary(true)&limit=10&access_token=${encodeURIComponent(pageAccessToken)}`;
-    const postsRes = await fetch(postsUrl, {
-      headers: { Accept: "application/json" },
-      cache: "no-store"
-    });
+    const postEndpoints = ["published_posts", "posts", "feed"];
+    let fetchedPostsData: any[] = [];
+    let postsLog = "";
 
-    if (postsRes.ok) {
-      const postsJson = (await postsRes.json()) as {
-        data?: Array<{
-          id?: string;
-          message?: string;
-          story?: string;
-          created_time?: string;
-          reactions?: { summary?: { total_count?: number } };
-          comments?: { summary?: { total_count?: number } };
-          shares?: { count?: number };
-        }>;
-      };
-      if (postsJson.data && Array.isArray(postsJson.data) && postsJson.data.length > 0) {
-        let sumInteractions = 0;
-        const typeCounts: Record<string, number> = {};
+    for (const ep of postEndpoints) {
+      const postsUrl = `https://graph.facebook.com/v20.0/${postsNode}/${ep}?fields=id,message,story,created_time,shares,reactions.summary(true),comments.summary(true)&limit=10&access_token=${encodeURIComponent(pageAccessToken)}`;
+      const postsRes = await fetch(postsUrl, {
+        headers: { Accept: "application/json" },
+        cache: "no-store"
+      });
 
-        const livePosts: FanpagePost[] = postsJson.data.map((item, idx) => {
-          const message = item.message || item.story || `Bài viết #${idx + 1}`;
-          const dateStr = item.created_time ? new Date(item.created_time).toLocaleDateString("vi-VN") : "Gần đây";
-          const reactions = item.reactions?.summary?.total_count || 0;
-          const comments = item.comments?.summary?.total_count || 0;
-          const shares = item.shares?.count || 0;
-          const totalInteract = reactions + comments + shares;
-          sumInteractions += totalInteract;
+      const postsText = await postsRes.text();
+      postsLog += `[${ep}: HTTP ${postsRes.status}] ${postsText.slice(0, 200)}\n`;
 
-          const postType = message.includes("http") ? "Liên kết / Bài viết" : message.length > 100 ? "Bài viết chi tiết" : "Hình ảnh / Cập nhật";
-          typeCounts[postType] = (typeCounts[postType] || 0) + 1;
+      if (postsRes.ok) {
+        let postsJson: any = {};
+        try {
+          postsJson = JSON.parse(postsText);
+        } catch (e) {}
 
-          return {
-            id: item.id || `post-${idx}`,
-            title: message.length > 80 ? `${message.slice(0, 80)}...` : message,
-            type: postType,
-            date: dateStr,
-            reach: 0,
-            reactions,
-            comments,
-            shares,
-            engagementRate: "0%",
-            leadsGenerated: 0
-          };
-        });
-
-        payload.posts = livePosts;
-        payload.totalInteractions = sumInteractions;
-        payload.postTypeBreakdown = Object.entries(typeCounts).map(([name, count]) => ({ name, count }));
+        if (postsJson.data && Array.isArray(postsJson.data) && postsJson.data.length > 0) {
+          fetchedPostsData = postsJson.data;
+          break;
+        }
       }
+    }
+
+    debugInfo.rawResponseOrError = `[Page Query]:\n${pageText}\n\n[Posts Query Log]:\n${postsLog}`;
+
+    if (fetchedPostsData.length > 0) {
+      let sumInteractions = 0;
+      const typeCounts: Record<string, number> = {};
+
+      const livePosts: FanpagePost[] = fetchedPostsData.map((item, idx) => {
+        const message = item.message || item.story || `Bài viết Tuyển sinh #${idx + 1}`;
+        const dateStr = item.created_time ? new Date(item.created_time).toLocaleDateString("vi-VN") : "Gần đây";
+        const reactions = item.reactions?.summary?.total_count || 0;
+        const comments = item.comments?.summary?.total_count || 0;
+        const shares = item.shares?.count || 0;
+        const totalInteract = reactions + comments + shares;
+        sumInteractions += totalInteract;
+
+        const postType = message.toLowerCase().includes("thông báo")
+          ? "Thông báo / Tuyển sinh"
+          : message.toLowerCase().includes("video") || message.toLowerCase().includes("reel")
+          ? "Video / Reels"
+          : message.includes("http")
+          ? "Liên kết / Bài viết"
+          : "Hình ảnh / Cập nhật";
+        typeCounts[postType] = (typeCounts[postType] || 0) + 1;
+
+        return {
+          id: item.id || `post-${idx}`,
+          title: message.length > 90 ? `${message.slice(0, 90)}...` : message,
+          type: postType,
+          date: dateStr,
+          reach: 0,
+          reactions,
+          comments,
+          shares,
+          engagementRate: reactions > 0 ? "Live" : "0%",
+          leadsGenerated: 0
+        };
+      });
+
+      payload.posts = livePosts;
+      payload.totalInteractions = sumInteractions;
+      payload.postTypeBreakdown = Object.entries(typeCounts).map(([name, count]) => ({ name, count }));
     }
   } catch (err) {
     debugInfo.rawResponseOrError = err instanceof Error ? err.message : String(err);
