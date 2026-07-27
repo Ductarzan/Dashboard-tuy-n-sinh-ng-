@@ -77,7 +77,17 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
     ],
     posts: [],
     isConnected: true,
-    error: null
+    error: null,
+    debug: {
+      hasAccessToken: false,
+      accessTokenLength: 0,
+      hasAdAccounts: false,
+      adAccountsCount: 0,
+      pageIdUsed: "me",
+      apiHttpStatus: null,
+      apiEndpointAttempted: "",
+      rawResponseOrError: "Chưa kết nối API"
+    }
   };
 
   return (
@@ -618,10 +628,53 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                 </div>
               </div>
               <div className="fanpage-status-pill">
-                <span className="tone-pill ok">
+                <span className={`tone-pill ${fanpageInfo.isConnected ? "ok" : "warn"}`}>
                   <span className="tone-dot" />
-                  {fanpageInfo.isConnected ? "Meta Graph API v20.0 Connected" : "Dữ liệu kết nối Meta API"}
+                  {fanpageInfo.isConnected ? "Meta Graph API v20.0 Connected" : "Chưa cài FB_ACCESS_TOKEN"}
                 </span>
+              </div>
+            </div>
+
+            {/* Meta Graph API Diagnostic & Debug Box */}
+            <div className="subpanel debug-panel margin-bottom-subpanel">
+              <h3>Diagnostic & Debug: Kết nối Meta Graph API</h3>
+              <p className="detail-note">
+                Đối chiếu trạng thái Token, HTTP Code và Phản hồi trực tiếp từ Meta API để phát hiện nhanh nguyên nhân lỗi
+              </p>
+              <div className="debug-grid">
+                <article className="debug-card">
+                  <p>FB_ACCESS_TOKEN</p>
+                  <strong className={fanpageInfo.debug?.hasAccessToken ? "text-green" : "text-red"}>
+                    {fanpageInfo.debug?.hasAccessToken
+                      ? `Đã cài (${fanpageInfo.debug.accessTokenLength} kí tự)`
+                      : "Chưa phát hiện token"}
+                  </strong>
+                </article>
+                <article className="debug-card">
+                  <p>Tài khoản Meta Ads</p>
+                  <strong className={fanpageInfo.debug?.hasAdAccounts ? "text-blue" : "text-muted"}>
+                    {fanpageInfo.debug?.hasAdAccounts
+                      ? `${fanpageInfo.debug.adAccountsCount} tài khoản`
+                      : "Dùng danh sách mặc định"}
+                  </strong>
+                </article>
+                <article className="debug-card">
+                  <p>FB_PAGE_ID</p>
+                  <strong>{fanpageInfo.debug?.pageIdUsed || "me"}</strong>
+                </article>
+                <article className="debug-card">
+                  <p>Meta API HTTP Status</p>
+                  <strong className={fanpageInfo.debug?.apiHttpStatus === 200 ? "text-green" : "text-red"}>
+                    {fanpageInfo.debug?.apiHttpStatus ? `HTTP ${fanpageInfo.debug.apiHttpStatus}` : "Chưa nhận phản hồi"}
+                  </strong>
+                </article>
+              </div>
+
+              <div className="debug-log-box">
+                <p className="debug-log-title">Phản hồi / Nhật ký lỗi chi tiết từ Meta Graph API (raw body):</p>
+                <pre className="debug-code">
+                  {fanpageInfo.debug?.rawResponseOrError || "Chưa có nhật ký phản hồi."}
+                </pre>
               </div>
             </div>
 

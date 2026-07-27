@@ -85,6 +85,17 @@ export type FanpagePost = {
   leadsGenerated: number;
 };
 
+export type MetaFanpageDebugInfo = {
+  hasAccessToken: boolean;
+  accessTokenLength: number;
+  hasAdAccounts: boolean;
+  adAccountsCount: number;
+  pageIdUsed: string;
+  apiHttpStatus: number | null;
+  apiEndpointAttempted: string;
+  rawResponseOrError: string;
+};
+
 export type MetaFanpagePayload = {
   name: string;
   handle: string;
@@ -98,6 +109,7 @@ export type MetaFanpagePayload = {
   posts: FanpagePost[];
   isConnected: boolean;
   error: string | null;
+  debug: MetaFanpageDebugInfo;
 };
 
 type DashboardPayload = {
@@ -1090,6 +1102,20 @@ async function fetchMetaFanpagePayload(
   accessToken: string,
   fbAds: FbAdsPayload
 ): Promise<MetaFanpagePayload> {
+  const accountIdsEnv = process.env.FB_AD_ACCOUNT_IDS?.split(",").map((s) => s.trim()).filter(Boolean) || [];
+  const pageIdUsed = process.env.FB_PAGE_ID || "me";
+
+  const debugInfo: MetaFanpageDebugInfo = {
+    hasAccessToken: Boolean(accessToken),
+    accessTokenLength: accessToken.length,
+    hasAdAccounts: accountIdsEnv.length > 0,
+    adAccountsCount: accountIdsEnv.length,
+    pageIdUsed,
+    apiHttpStatus: null,
+    apiEndpointAttempted: `https://graph.facebook.com/v20.0/${pageIdUsed}?fields=id,name,username,followers_count,fan_count`,
+    rawResponseOrError: "Chưa gọi API (AccessToken chưa được cài hoặc bị trống)."
+  };
+
   const fallbackPosts: FanpagePost[] = [
     {
       id: "p1",
@@ -1158,7 +1184,8 @@ async function fetchMetaFanpagePayload(
     ],
     posts: fallbackPosts,
     isConnected: Boolean(accessToken),
-    error: null
+    error: null,
+    debug: debugInfo
   };
 
   if (!accessToken) {
@@ -1166,28 +1193,32 @@ async function fetchMetaFanpagePayload(
   }
 
   try {
-    const pageId = process.env.FB_PAGE_ID || "me";
-    const pageUrl = `https://graph.facebook.com/v20.0/${pageId}?fields=id,name,username,followers_count,fan_count&access_token=${encodeURIComponent(accessToken)}`;
+    const pageUrl = `https://graph.facebook.com/v20.0/${pageIdUsed}?fields=id,name,username,followers_count,fan_count&access_token=${encodeURIComponent(accessToken)}`;
     
     const pageRes = await fetch(pageUrl, {
       headers: { Accept: "application/json" },
       cache: "no-store"
     });
 
+    debugInfo.apiHttpStatus = pageRes.status;
+    const pageText = await pageRes.text();
+    debugInfo.rawResponseOrError = pageText;
+
     if (pageRes.ok) {
-      const pageJson = (await pageRes.json()) as {
-        name?: string;
-        username?: string;
-        followers_count?: number;
-        fan_count?: number;
-      };
+      let pageJson: any = {};
+      try {
+        pageJson = JSON.parse(pageText);
+      } catch (e) {}
+
       if (pageJson.name) defaultPayload.name = pageJson.name;
       if (pageJson.username) defaultPayload.handle = `@${pageJson.username}`;
       if (typeof pageJson.followers_count === "number") defaultPayload.followersCount = pageJson.followers_count;
       if (typeof pageJson.fan_count === "number") defaultPayload.fanCount = pageJson.fan_count;
+    } else {
+      defaultPayload.error = `HTTP ${pageRes.status}: ${pageText.slice(0, 150)}`;
     }
 
-    const postsUrl = `https://graph.facebook.com/v20.0/${pageId}/published_posts?fields=id,message,created_time,shares,reactions.summary(true),comments.summary(true)&limit=5&access_token=${encodeURIComponent(accessToken)}`;
+    const postsUrl = `https://graph.facebook.com/v20.0/${pageIdUsed}/published_posts?fields=id,message,created_time,shares,reactions.summary(true),comments.summary(true)&limit=5&access_token=${encodeURIComponent(accessToken)}`;
     const postsRes = await fetch(postsUrl, {
       headers: { Accept: "application/json" },
       cache: "no-store"
@@ -1234,7 +1265,8 @@ async function fetchMetaFanpagePayload(
       }
     }
   } catch (err) {
-    console.warn("Meta Fanpage Graph API notice:", err);
+    debugInfo.rawResponseOrError = err instanceof Error ? err.message : String(err);
+    defaultPayload.error = err instanceof Error ? err.message : String(err);
   }
 
   return defaultPayload;
