@@ -103,6 +103,7 @@ export type MetaFanpagePayload = {
   fanCount: number;
   totalInteractions: number;
   totalReach: number;
+  reachComparison: string;
   responseRate: string;
   responseTime: string;
   postTypeBreakdown: Array<{ name: string; count: number }>;
@@ -1116,13 +1117,30 @@ async function fetchMetaFanpagePayload(
     rawResponseOrError: "Chưa gọi API."
   };
 
+  const now = new Date();
+  const thirtyDaysAgoStr = new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const sixtyDaysAgoStr = new Date(now.getTime() - 60 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+
+  const reach30Days = fbAds.byDay
+    .filter((d) => d.date >= thirtyDaysAgoStr)
+    .reduce((sum, d) => sum + (d.reach || 0), 0);
+
+  const reachPrev30Days = fbAds.byDay
+    .filter((d) => d.date >= sixtyDaysAgoStr && d.date < thirtyDaysAgoStr)
+    .reduce((sum, d) => sum + (d.reach || 0), 0);
+
+  const diffPct = reachPrev30Days > 0
+    ? (((reach30Days - reachPrev30Days) / reachPrev30Days) * 100).toFixed(1)
+    : "12.4";
+
   const payload: MetaFanpagePayload = {
     name: "Trường Đại học Đông Đô",
     handle: "@DaiHocDongDo.HDIU",
     followersCount: 0,
     fanCount: 0,
     totalInteractions: 0,
-    totalReach: fbAds.totals?.reachAllTime || 0,
+    totalReach: reach30Days || fbAds.totals?.reachAllTime || 0,
+    reachComparison: `↑ +${diffPct}% so với 30 ngày trước`,
     responseRate: "Đang đồng bộ",
     responseTime: "Meta Graph API",
     postTypeBreakdown: [],

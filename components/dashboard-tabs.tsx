@@ -682,7 +682,7 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
 
                 <article className="meta-card">
                   <div className="meta-card-header">
-                    <span className="meta-card-label">Số lượt tiếp cận (Reach)</span>
+                    <span className="meta-card-label">Số lượt tiếp cận (30 ngày gần nhất)</span>
                     <span className="meta-icon-badge green">
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -691,7 +691,7 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                     </span>
                   </div>
                   <strong className="meta-card-val text-green">{numberFmt.format(fanpageInfo.totalReach)}</strong>
-                  <span className="meta-card-sub">Organic + Paid Reach từ Ads API</span>
+                  <span className="meta-card-sub text-green">{fanpageInfo.reachComparison || "Organic + Paid (30 ngày)"}</span>
                 </article>
 
                 <article className="meta-card">
@@ -810,13 +810,12 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                         <th className="num-col">Tương tác</th>
                         <th className="num-col">Bình luận & Share</th>
                         <th className="num-col">Tỷ lệ tương tác</th>
-                        <th className="num-col">Leads thu về</th>
                       </tr>
                     </thead>
                     <tbody>
                       {fanpageInfo.posts.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="empty-cell" style={{ padding: "24px", textAlign: "center" }}>
+                          <td colSpan={7} className="empty-cell" style={{ padding: "24px", textAlign: "center" }}>
                             Chưa có bài viết trực tiếp nào trong 30 ngày gần nhất được trả về từ Meta API.<br />
                             Dữ liệu <strong>Lượt theo dõi ({numberFmt.format(fanpageInfo.followersCount)})</strong> & <strong>Lượt thích trang ({numberFmt.format(fanpageInfo.fanCount)})</strong> đã được đồng bộ 100% từ Meta API.
                           </td>
@@ -831,7 +830,6 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                             <td className="num-col text-green bold">{numberFmt.format(post.reactions)}</td>
                             <td className="num-col">{numberFmt.format(post.comments + post.shares)}</td>
                             <td className="num-col text-blue bold">{post.engagementRate}</td>
-                            <td className="num-col text-green bold">{post.leadsGenerated}</td>
                           </tr>
                         ))
                       )}
