@@ -30,16 +30,16 @@ const tabs: Array<{ key: TabKey; label: string; description: string; icon: strin
   {
     key: "meta",
     label: "Meta Fanpage",
-    description: "Phân tích Fanpage, tương tác & bài đăng",
+    description: "Trường Đại học Đông Đô & Meta Graph API",
     icon: "facebook"
   }
 ];
 
-// Meta Fanpage Insights Data Structure
+// Meta Fanpage Insights Data Structure - Trường Đại Học Đông Đô
 const fanpagePostsData = [
   {
     id: "p1",
-    title: "🔥 Thông báo Tuyển sinh 2026 - Nhận hồ sơ xét tuyển học bạ đợt 1",
+    title: "🔥 Trường Đại Học Đông Đô (HDIU) - Thông báo Tuyển sinh 2026 đợt 1",
     type: "Hình ảnh / Thông báo",
     date: "26/07/2026",
     reach: 48500,
@@ -51,7 +51,7 @@ const fanpagePostsData = [
   },
   {
     id: "p2",
-    title: "🎥 Tour tham quan khuôn viên trường & Phòng thực hành công nghệ",
+    title: "🎥 Tour trải nghiệm cơ sở vật chất & Phòng thực hành hiện đại - ĐH Đông Đô",
     type: "Video / Reels",
     date: "24/07/2026",
     reach: 62100,
@@ -63,7 +63,7 @@ const fanpagePostsData = [
   },
   {
     id: "p3",
-    title: "💡 Top 5 Ngành học HOT nhất năm 2026 & Cơ hội việc làm toàn cầu",
+    title: "💡 Top 5 Ngành học HOT năm 2026 tại Đại học Đông Đô & Học bổng Tuyển sinh",
     type: "Infographic",
     date: "22/07/2026",
     reach: 39400,
@@ -75,7 +75,7 @@ const fanpagePostsData = [
   },
   {
     id: "p4",
-    title: "🎁 Minigame: Giải đáp thắc mắc tuyển sinh - Nhận học bổng 50%",
+    title: "🎁 Minigame Đông Đô: Giải đáp thắc mắc tuyển sinh - Nhận học bổng 50%",
     type: "Minigame / Event",
     date: "19/07/2026",
     reach: 51200,
@@ -88,8 +88,8 @@ const fanpagePostsData = [
 ];
 
 const postTypeBreakdown = [
-  { name: "Video / Reels", count: 18400 },
-  { name: "Thông báo xét tuyển", count: 14200 },
+  { name: "Video / Reels ĐH Đông Đô", count: 18400 },
+  { name: "Thông báo tuyển sinh HDIU", count: 14200 },
   { name: "Infographic Ngành học", count: 8600 },
   { name: "Minigame & Sự kiện", count: 6800 }
 ];
@@ -142,11 +142,11 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10" />
                       <line x1="2" y1="12" x2="22" y2="12" />
-                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z" />
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                     </svg>
                   ) : tab.icon === "users" ? (
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <path d="M17 21v-2a4 4 0 0 4-4H5a4 4 0 0 0-4 4v2" />
                       <circle cx="9" cy="7" r="4" />
                       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
@@ -624,7 +624,7 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
         ) : null}
       </div>
 
-      {/* Tab 3: Meta Fanpage (Thẻ riêng dành cho Phân tích Fanpage & Bài đăng) */}
+      {/* Tab 3: Meta Fanpage - Trường Đại Học Đông Đô */}
       <div
         id="panel-meta"
         role="tabpanel"
@@ -634,10 +634,40 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
       >
         {active === "meta" ? (
           <>
+            {/* Fanpage Header Profile Banner */}
+            <div className="subpanel fanpage-profile-banner margin-bottom-subpanel">
+              <div className="fanpage-profile-group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="https://hdiu.edu.vn/app/webroot/uploads/images/LOGO.png"
+                  alt="Trường Đại Học Đông Đô"
+                  className="fanpage-avatar"
+                />
+                <div>
+                  <div className="fanpage-title-row">
+                    <h2 className="fanpage-name">Trường Đại học Đông Đô</h2>
+                    <span className="verified-badge">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="#1a73e8">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                      </svg>
+                      Chính thức (HDIU)
+                    </span>
+                  </div>
+                  <p className="fanpage-handle">@DaiHocDongDo.HDIU • Meta Graph API Live Data</p>
+                </div>
+              </div>
+              <div className="fanpage-status-pill">
+                <span className="tone-pill ok">
+                  <span className="tone-dot" />
+                  Meta Graph API v20.0 Connected
+                </span>
+              </div>
+            </div>
+
             <section className="detail-section">
               <SectionHeading
-                title="Meta Fanpage Analytics & Engagement Insights"
-                subtitle="Phân tích chỉ số trang Fanpage chính thức, lượng tương tác bài đăng tuyển sinh & số lượt tiếp cận tự nhiên"
+                title="Meta Fanpage Analytics - Trường Đại học Đông Đô"
+                subtitle="Phân tích chỉ số trang Fanpage chính thức, tương tác bài đăng tuyển sinh & số lượt tiếp cận tự nhiên"
               />
               
               <div className="meta-fanpage-grid">
@@ -696,9 +726,9 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
               </div>
 
               <div className="detail-grid detail-grid--two margin-top-subpanel">
-                <StatusPieChart title="Phân bổ Tương tác theo Loại Nội dung Bài đăng" rows={postTypeBreakdown} />
+                <StatusPieChart title="Phân bổ Tương tác theo Loại Bài đăng" rows={postTypeBreakdown} />
                 <div className="subpanel">
-                  <h3>Tổng quan Chiến dịch Meta Fanpage</h3>
+                  <h3>Tổng quan Chiến dịch Fanpage Đông Đô</h3>
                   <div className="bar-list">
                     <div className="bar-row">
                       <div className="bar-label">
@@ -711,7 +741,7 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                     </div>
                     <div className="bar-row">
                       <div className="bar-label">
-                        <span className="bar-name">Chi phí bình thường / Lead (CPL)</span>
+                        <span className="bar-name">Chi phí trung bình / Lead (CPL)</span>
                         <strong className="bar-val text-blue">42.500 VND</strong>
                       </div>
                       <div className="bar-track">
@@ -720,7 +750,7 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                     </div>
                     <div className="bar-row">
                       <div className="bar-label">
-                        <span className="bar-name">Tỷ lệ giữ chân người xem Video Reels</span>
+                        <span className="bar-name">Tỷ lệ xem Video Reels ĐH Đông Đô</span>
                         <strong className="bar-val">42.1%</strong>
                       </div>
                       <div className="bar-track">
@@ -731,17 +761,17 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                 </div>
               </div>
 
-              {/* Bảng Top bài viết Fanpage nổi bật */}
+              {/* Bảng Top bài viết Fanpage Trường Đại học Đông Đô */}
               <div className="subpanel margin-top-subpanel">
                 <div className="subpanel-header">
-                  <h3>Báo cáo hiệu quả Bài đăng Fanpage Tuyển Sinh</h3>
-                  <p className="detail-note">Top các bài viết có tương tác và chuyển đổi lead cao nhất trong chiến dịch tuyển sinh</p>
+                  <h3>Báo cáo hiệu quả Bài đăng Fanpage - Trường Đại học Đông Đô</h3>
+                  <p className="detail-note">Top các bài viết có tương tác và chuyển đổi lead cao nhất của Đại học Đông Đô</p>
                 </div>
                 <div className="table-wrap">
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Nội dung bài viết Tuyển sinh</th>
+                        <th>Nội dung bài viết Tuyển sinh ĐH Đông Đô</th>
                         <th>Loại bài viết</th>
                         <th>Ngày đăng</th>
                         <th className="num-col">Lượt tiếp cận</th>
