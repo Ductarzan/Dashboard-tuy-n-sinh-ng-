@@ -1116,80 +1116,24 @@ async function fetchMetaFanpagePayload(
     rawResponseOrError: "Chưa gọi API."
   };
 
-  const fallbackPosts: FanpagePost[] = [
-    {
-      id: "p1",
-      title: "🔥 Trường Đại Học Đông Đô (HDIU) - Thông báo Tuyển sinh 2026 đợt 1",
-      type: "Hình ảnh / Thông báo",
-      date: "26/07/2026",
-      reach: 48500,
-      reactions: 3420,
-      comments: 480,
-      shares: 215,
-      engagementRate: "8.5%",
-      leadsGenerated: 142
-    },
-    {
-      id: "p2",
-      title: "🎥 Tour trải nghiệm cơ sở vật chất & Phòng thực hành hiện đại - ĐH Đông Đô",
-      type: "Video / Reels",
-      date: "24/07/2026",
-      reach: 62100,
-      reactions: 5890,
-      comments: 730,
-      shares: 412,
-      engagementRate: "11.3%",
-      leadsGenerated: 198
-    },
-    {
-      id: "p3",
-      title: "💡 Top 5 Ngành học HOT năm 2026 tại Đại học Đông Đô & Học bổng Tuyển sinh",
-      type: "Infographic",
-      date: "22/07/2026",
-      reach: 39400,
-      reactions: 2840,
-      comments: 310,
-      shares: 184,
-      engagementRate: "8.4%",
-      leadsGenerated: 115
-    },
-    {
-      id: "p4",
-      title: "🎁 Minigame Đông Đô: Giải đáp thắc mắc tuyển sinh - Nhận học bổng 50%",
-      type: "Minigame / Event",
-      date: "19/07/2026",
-      reach: 51200,
-      reactions: 4150,
-      comments: 1240,
-      shares: 530,
-      engagementRate: "11.6%",
-      leadsGenerated: 164
-    }
-  ];
-
-  const defaultPayload: MetaFanpagePayload = {
+  const payload: MetaFanpagePayload = {
     name: "Trường Đại học Đông Đô",
     handle: "@DaiHocDongDo.HDIU",
-    followersCount: 128450,
-    fanCount: 125000,
-    totalInteractions: 45210,
-    totalReach: fbAds.totals.reachAllTime || 342800,
-    responseRate: "98.5%",
-    responseTime: "~3 phút",
-    postTypeBreakdown: [
-      { name: "Video / Reels ĐH Đông Đô", count: 18400 },
-      { name: "Thông báo tuyển sinh HDIU", count: 14200 },
-      { name: "Infographic Ngành học", count: 8600 },
-      { name: "Minigame & Sự kiện", count: 6800 }
-    ],
-    posts: fallbackPosts,
+    followersCount: 0,
+    fanCount: 0,
+    totalInteractions: 0,
+    totalReach: fbAds.totals?.reachAllTime || 0,
+    responseRate: "Đang đồng bộ",
+    responseTime: "Meta Graph API",
+    postTypeBreakdown: [],
+    posts: [],
     isConnected: Boolean(accessToken),
     error: null,
     debug: debugInfo
   };
 
   if (!accessToken) {
-    return defaultPayload;
+    return payload;
   }
 
   try {
@@ -1218,10 +1162,10 @@ async function fetchMetaFanpagePayload(
           const dongDoPage = accJson.data.find((p: any) => p.name?.toLowerCase().includes("đông đô")) || accJson.data[0];
           targetPageId = dongDoPage.id;
           if (dongDoPage.access_token) pageAccessToken = dongDoPage.access_token;
-          if (dongDoPage.name) defaultPayload.name = dongDoPage.name;
-          if (dongDoPage.username) defaultPayload.handle = `@${dongDoPage.username}`;
-          if (typeof dongDoPage.followers_count === "number") defaultPayload.followersCount = dongDoPage.followers_count;
-          if (typeof dongDoPage.fan_count === "number") defaultPayload.fanCount = dongDoPage.fan_count;
+          if (dongDoPage.name) payload.name = dongDoPage.name;
+          if (dongDoPage.username) payload.handle = `@${dongDoPage.username}`;
+          if (typeof dongDoPage.followers_count === "number") payload.followersCount = dongDoPage.followers_count;
+          if (typeof dongDoPage.fan_count === "number") payload.fanCount = dongDoPage.fan_count;
           debugInfo.pageIdUsed = `${targetPageId} (${dongDoPage.name})`;
         }
       }
@@ -1248,15 +1192,15 @@ async function fetchMetaFanpagePayload(
         pageJson = JSON.parse(pageText);
       } catch (e) {}
 
-      if (pageJson.name) defaultPayload.name = pageJson.name;
-      if (pageJson.username) defaultPayload.handle = `@${pageJson.username}`;
-      if (typeof pageJson.followers_count === "number") defaultPayload.followersCount = pageJson.followers_count;
-      if (typeof pageJson.fan_count === "number") defaultPayload.fanCount = pageJson.fan_count;
+      if (pageJson.name) payload.name = pageJson.name;
+      if (pageJson.username) payload.handle = `@${pageJson.username}`;
+      if (typeof pageJson.followers_count === "number") payload.followersCount = pageJson.followers_count;
+      if (typeof pageJson.fan_count === "number") payload.fanCount = pageJson.fan_count;
     }
 
     // Step 3: Fetch published posts
     const postsNode = targetPageId || "me";
-    const postsUrl = `https://graph.facebook.com/v20.0/${postsNode}/published_posts?fields=id,message,created_time,shares,reactions.summary(true),comments.summary(true)&limit=5&access_token=${encodeURIComponent(pageAccessToken)}`;
+    const postsUrl = `https://graph.facebook.com/v20.0/${postsNode}/published_posts?fields=id,message,created_time,shares,reactions.summary(true),comments.summary(true)&limit=10&access_token=${encodeURIComponent(pageAccessToken)}`;
     const postsRes = await fetch(postsUrl, {
       headers: { Accept: "application/json" },
       cache: "no-store"
@@ -1275,39 +1219,46 @@ async function fetchMetaFanpagePayload(
         }>;
       };
       if (postsJson.data && Array.isArray(postsJson.data) && postsJson.data.length > 0) {
+        let sumInteractions = 0;
+        const typeCounts: Record<string, number> = {};
+
         const livePosts: FanpagePost[] = postsJson.data.map((item, idx) => {
-          const message = item.message || item.story || `Bài viết Tuyển sinh #${idx + 1}`;
+          const message = item.message || item.story || `Bài viết #${idx + 1}`;
           const dateStr = item.created_time ? new Date(item.created_time).toLocaleDateString("vi-VN") : "Gần đây";
-          const reactions = item.reactions?.summary?.total_count || 1200 + idx * 300;
-          const comments = item.comments?.summary?.total_count || 150 + idx * 40;
-          const shares = item.shares?.count || 50 + idx * 15;
-          const reach = 15000 + idx * 4000;
+          const reactions = item.reactions?.summary?.total_count || 0;
+          const comments = item.comments?.summary?.total_count || 0;
+          const shares = item.shares?.count || 0;
           const totalInteract = reactions + comments + shares;
-          const rate = reach > 0 ? `${((totalInteract / reach) * 100).toFixed(1)}%` : "7.5%";
+          sumInteractions += totalInteract;
+
+          const postType = message.includes("http") ? "Liên kết / Bài viết" : message.length > 100 ? "Bài viết chi tiết" : "Hình ảnh / Cập nhật";
+          typeCounts[postType] = (typeCounts[postType] || 0) + 1;
 
           return {
-            id: item.id || `live-${idx}`,
+            id: item.id || `post-${idx}`,
             title: message.length > 80 ? `${message.slice(0, 80)}...` : message,
-            type: idx % 2 === 0 ? "Thông báo / Bài viết" : "Video / Reels",
+            type: postType,
             date: dateStr,
-            reach,
+            reach: 0,
             reactions,
             comments,
             shares,
-            engagementRate: rate,
-            leadsGenerated: 25 + idx * 18
+            engagementRate: "0%",
+            leadsGenerated: 0
           };
         });
 
-        defaultPayload.posts = livePosts;
+        payload.posts = livePosts;
+        payload.totalInteractions = sumInteractions;
+        payload.postTypeBreakdown = Object.entries(typeCounts).map(([name, count]) => ({ name, count }));
       }
     }
   } catch (err) {
     debugInfo.rawResponseOrError = err instanceof Error ? err.message : String(err);
-    defaultPayload.error = err instanceof Error ? err.message : String(err);
+    payload.error = err instanceof Error ? err.message : String(err);
   }
 
-  return defaultPayload;
+  return payload;
 }
 
 async function loadFromGoogleSheets() {

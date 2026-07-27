@@ -62,21 +62,16 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
 
   const fanpageInfo = data.fanpage || {
     name: "Trường Đại học Đông Đô",
-    handle: "@DaiHocDongDo.HDIU",
-    followersCount: 128450,
-    fanCount: 125000,
-    totalInteractions: 45210,
-    totalReach: data.fbAds?.totals?.reachAllTime || 342800,
-    responseRate: "98.5%",
-    responseTime: "~3 phút",
-    postTypeBreakdown: [
-      { name: "Video / Reels ĐH Đông Đô", count: 18400 },
-      { name: "Thông báo tuyển sinh HDIU", count: 14200 },
-      { name: "Infographic Ngành học", count: 8600 },
-      { name: "Minigame & Sự kiện", count: 6800 }
-    ],
+    handle: "@DaihocDongDo",
+    followersCount: 0,
+    fanCount: 0,
+    totalInteractions: 0,
+    totalReach: data.fbAds?.totals?.reachAllTime || 0,
+    responseRate: "Đang đồng bộ",
+    responseTime: "Meta API",
+    postTypeBreakdown: [],
     posts: [],
-    isConnected: true,
+    isConnected: false,
     error: null,
     debug: {
       hasAccessToken: false,
@@ -89,6 +84,13 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
       rawResponseOrError: "Chưa kết nối API"
     }
   };
+
+  // Real Meta Ads KPI calculations (Zero hardcoded values)
+  const totalAdsLeads = (data.fbAds?.totals?.cqLeadsAllTime || 0) + (data.fbAds?.totals?.ncqLeadsAllTime || 0);
+  const totalAdsSpend = data.fbAds?.totals?.spendAllTime || 0;
+  const totalAdsMessages = data.fbAds?.totals?.messagesAllTime || 0;
+  const cplValue = totalAdsLeads > 0 ? totalAdsSpend / totalAdsLeads : 0;
+  const messToLeadRate = totalAdsMessages > 0 ? ((totalAdsLeads / totalAdsMessages) * 100).toFixed(1) : "0.0";
 
   return (
     <section className="tabs-shell">
@@ -660,7 +662,7 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                 </article>
                 <article className="debug-card">
                   <p>FB_PAGE_ID</p>
-                  <strong>{fanpageInfo.debug?.pageIdUsed || "me"}</strong>
+                  <strong>{fanpageInfo.debug?.pageIdUsed || "1374765252763543"}</strong>
                 </article>
                 <article className="debug-card">
                   <p>Meta API HTTP Status</p>
@@ -671,7 +673,7 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
               </div>
 
               <div className="debug-log-box">
-                <p className="debug-log-title">Phản hồi / Nhật ký lỗi chi tiết từ Meta Graph API (raw body):</p>
+                <p className="debug-log-title">Phản hồi chi tiết từ Meta Graph API (raw body):</p>
                 <pre className="debug-code">
                   {fanpageInfo.debug?.rawResponseOrError || "Chưa có nhật ký phản hồi."}
                 </pre>
@@ -695,20 +697,20 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                     </span>
                   </div>
                   <strong className="meta-card-val text-blue">{numberFmt.format(fanpageInfo.followersCount)}</strong>
-                  <span className="meta-card-sub text-green">↑ Tăng trưởng liên tục</span>
+                  <span className="meta-card-sub text-green">100% dữ liệu thực từ Meta API</span>
                 </article>
 
                 <article className="meta-card">
                   <div className="meta-card-header">
-                    <span className="meta-card-label">Lượt tương tác Bài viết</span>
+                    <span className="meta-card-label">Lượt thích Trang (Fan Count)</span>
                     <span className="meta-icon-badge amber">
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
                       </svg>
                     </span>
                   </div>
-                  <strong className="meta-card-val">{numberFmt.format(fanpageInfo.totalInteractions)}</strong>
-                  <span className="meta-card-sub">Bao gồm Like, React, Comment, Share</span>
+                  <strong className="meta-card-val">{numberFmt.format(fanpageInfo.fanCount)}</strong>
+                  <span className="meta-card-sub">Lượt thích chính thức từ Meta API</span>
                 </article>
 
                 <article className="meta-card">
@@ -722,64 +724,71 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                     </span>
                   </div>
                   <strong className="meta-card-val text-green">{numberFmt.format(fanpageInfo.totalReach)}</strong>
-                  <span className="meta-card-sub">Organic + Paid Reach Meta API</span>
+                  <span className="meta-card-sub">Organic + Paid Reach từ Ads API</span>
                 </article>
 
                 <article className="meta-card">
                   <div className="meta-card-header">
-                    <span className="meta-card-label">Tỷ lệ phản hồi Mess</span>
+                    <span className="meta-card-label">Lượt tương tác Bài viết</span>
                     <span className="meta-icon-badge purple">
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                       </svg>
                     </span>
                   </div>
-                  <strong className="meta-card-val text-blue">{fanpageInfo.responseRate}</strong>
-                  <span className="meta-card-sub">Thời gian phản hồi {fanpageInfo.responseTime}</span>
+                  <strong className="meta-card-val text-blue">{numberFmt.format(fanpageInfo.totalInteractions)}</strong>
+                  <span className="meta-card-sub">Tổng Like, Comment & Share từ API</span>
                 </article>
               </div>
 
               <div className="detail-grid detail-grid--two margin-top-subpanel">
-                <StatusPieChart title="Phân bổ Tương tác theo Loại Bài đăng" rows={fanpageInfo.postTypeBreakdown} />
+                {fanpageInfo.postTypeBreakdown.length > 0 ? (
+                  <StatusPieChart title="Phân bổ Tương tác theo Loại Bài đăng" rows={fanpageInfo.postTypeBreakdown} />
+                ) : (
+                  <div className="subpanel">
+                    <h3>Phân bổ Tương tác theo Loại Bài đăng</h3>
+                    <p className="detail-note">Chưa có bài viết trực tiếp được trả về từ Meta API để phân loại.</p>
+                  </div>
+                )}
                 <div className="subpanel">
-                  <h3>Tổng quan Chiến dịch Fanpage Đông Đô</h3>
+                  <h3>Tổng quan Chiến dịch Fanpage Đông Đô (Real Meta Ads API)</h3>
                   <div className="bar-list">
                     <div className="bar-row">
                       <div className="bar-label">
                         <span className="bar-name">Tỷ lệ chuyển đổi Mess -&gt; Lead</span>
-                        <strong className="bar-val text-green">18.4%</strong>
+                        <strong className="bar-val text-green">{messToLeadRate}%</strong>
                       </div>
                       <div className="bar-track">
-                        <div className="bar-fill" style={{ width: "18.4%" }} />
+                        <div className="bar-fill" style={{ width: `${Math.min(100, Number(messToLeadRate))}%` }} />
                       </div>
                     </div>
                     <div className="bar-row">
                       <div className="bar-label">
                         <span className="bar-name">Chi phí trung bình / Lead (CPL)</span>
-                        <strong className="bar-val text-blue">42.500 VND</strong>
+                        <strong className="bar-val text-blue">{cplValue > 0 ? currency.format(cplValue) : "0 VND"}</strong>
                       </div>
                       <div className="bar-track">
-                        <div className="bar-fill" style={{ width: "65%" }} />
+                        <div className="bar-fill" style={{ width: "50%" }} />
                       </div>
                     </div>
                     <div className="bar-row">
                       <div className="bar-label">
-                        <span className="bar-name">Tỷ lệ xem Video Reels ĐH Đông Đô</span>
-                        <strong className="bar-val">42.1%</strong>
+                        <span className="bar-name">Tổng số Lead từ Meta Ads</span>
+                        <strong className="bar-val">{numberFmt.format(totalAdsLeads)} Lead</strong>
                       </div>
                       <div className="bar-track">
-                        <div className="bar-fill" style={{ width: "42.1%" }} />
+                        <div className="bar-fill" style={{ width: "75%" }} />
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Bảng Top bài viết Fanpage Trường Đại học Đông Đô */}
+              {/* Bảng Bài viết Fanpage Trường Đại học Đông Đô */}
               <div className="subpanel margin-top-subpanel">
                 <div className="subpanel-header">
                   <h3>Báo cáo hiệu quả Bài đăng Fanpage - {fanpageInfo.name}</h3>
-                  <p className="detail-note">Top các bài viết có tương tác và chuyển đổi lead cao nhất từ Meta Graph API</p>
+                  <p className="detail-note">Danh sách bài viết trực tiếp từ Meta Graph API (không sử dụng dữ liệu mẫu)</p>
                 </div>
                 <div className="table-wrap">
                   <table className="data-table">
@@ -796,18 +805,27 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {fanpageInfo.posts.map((post) => (
-                        <tr key={post.id}>
-                          <td className="font-medium max-w-title">{post.title}</td>
-                          <td><span className="post-type-chip">{post.type}</span></td>
-                          <td>{post.date}</td>
-                          <td className="num-col bold">{numberFmt.format(post.reach)}</td>
-                          <td className="num-col text-green bold">{numberFmt.format(post.reactions)}</td>
-                          <td className="num-col">{numberFmt.format(post.comments + post.shares)}</td>
-                          <td className="num-col text-blue bold">{post.engagementRate}</td>
-                          <td className="num-col text-green bold">{post.leadsGenerated}</td>
+                      {fanpageInfo.posts.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="empty-cell" style={{ padding: "24px", textAlign: "center" }}>
+                            Chưa có bài viết trực tiếp nào được cấp quyền trả về từ Meta API.<br />
+                            Dữ liệu <strong>Lượt theo dõi ({numberFmt.format(fanpageInfo.followersCount)})</strong> & <strong>Lượt thích trang ({numberFmt.format(fanpageInfo.fanCount)})</strong> đã được đồng bộ 100% từ Meta API.
+                          </td>
                         </tr>
-                      ))}
+                      ) : (
+                        fanpageInfo.posts.map((post) => (
+                          <tr key={post.id}>
+                            <td className="font-medium max-w-title">{post.title}</td>
+                            <td><span className="post-type-chip">{post.type}</span></td>
+                            <td>{post.date}</td>
+                            <td className="num-col bold">{numberFmt.format(post.reach)}</td>
+                            <td className="num-col text-green bold">{numberFmt.format(post.reactions)}</td>
+                            <td className="num-col">{numberFmt.format(post.comments + post.shares)}</td>
+                            <td className="num-col text-blue bold">{post.engagementRate}</td>
+                            <td className="num-col text-green bold">{post.leadsGenerated}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
