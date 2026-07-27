@@ -830,10 +830,28 @@ export function DashboardTabs({ data }: { data: DashboardData }) {
                                   /* eslint-disable-next-line @next/next/no-img-element */
                                   <img
                                     src={post.picture}
-                                    alt="Post thumbnail"
+                                    alt="Thumbnail"
                                     style={{ width: "36px", height: "36px", borderRadius: "6px", objectFit: "cover", flexShrink: 0 }}
                                   />
-                                ) : null}
+                                ) : (
+                                  <div
+                                    style={{
+                                      width: "36px",
+                                      height: "36px",
+                                      borderRadius: "6px",
+                                      backgroundColor: "#e8f0fe",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      color: "#1a73e8",
+                                      fontWeight: 700,
+                                      fontSize: "11px",
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    FB
+                                  </div>
+                                )}
                                 <span>
                                   {post.title}{" "}
                                   {post.permalink ? (
