@@ -1750,13 +1750,15 @@ async function buildPayload(
   const offlineTotal = offlineData.length;
   const selfManagedTotal = selfManaged.totalCQ + selfManaged.totalNCQ;
   const fbStartDate = process.env.FB_ADS_START_DATE?.trim() || "2026-03-21";
+  const appTimezone = process.env.APP_TIMEZONE || "Asia/Bangkok";
+  const todayKey = formatDateInTimezone(new Date(), appTimezone);
   const cqLeadsByDay = countRowsByDay(cqRows, cqDateIdx);
   const ncqLeadsByDay = countRowsByDay(ncqRows, ncqDateIdx);
   const fbByDayMap = Object.fromEntries(fbAds.byDay.map((item) => [item.date, item]));
   const allDays = Array.from(
     new Set([...Object.keys(fbByDayMap), ...Object.keys(cqLeadsByDay), ...Object.keys(ncqLeadsByDay)])
   )
-    .filter((day) => day >= fbStartDate)
+    .filter((day) => day >= fbStartDate && day <= todayKey)
     .sort((a, b) => b.localeCompare(a));
   const mergedFbByDay = allDays.map((day) => {
     const base = fbByDayMap[day];
@@ -1783,7 +1785,7 @@ async function buildPayload(
 
   return {
     generatedAt: new Date().toISOString(),
-    timezone: process.env.APP_TIMEZONE || "Asia/Bangkok",
+    timezone: appTimezone,
     isDemo,
     debug: {
       spreadsheetIdSuffix: (process.env.GOOGLE_SHEETS_SPREADSHEET_ID || "").slice(-8),
