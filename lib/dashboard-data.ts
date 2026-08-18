@@ -711,9 +711,14 @@ function normalizeIndustryName(value: RawCell) {
   const raw = cellToString(value);
   if (!raw) return "Chưa có ngành";
 
-  const withoutCode = raw.replace(/\s*-\s*\d+\s*$/, "").replace(/\s+/g, " ").trim();
+  const firstIndustry = raw.split(/\s+-\s+/)[0] || raw;
+  const withoutCode = firstIndustry.replace(/\s*-\s*\d+\s*$/, "").replace(/\s+/g, " ").trim();
   const key = withoutCode.toLocaleLowerCase("vi-VN");
-  const normalizedKey = key.replace(/\s*-\s*/g, " ").replace(/\s+/g, " ").trim();
+  const normalizedKey = key
+    .replace(/&/g, "và")
+    .replace(/\s*-\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
   const aliases: Record<string, string> = {
     "quản trị kinh doanh": "Quản trị kinh doanh",
@@ -758,6 +763,8 @@ function normalizeIndustryName(value: RawCell) {
     "dược": "Dược học",
     "dược học": "Dược học"
   };
+
+  if (normalizedKey.includes("xét nghiệm y học")) return "Kỹ thuật xét nghiệm y học";
 
   return aliases[normalizedKey] || aliases[key] || withoutCode;
 }
