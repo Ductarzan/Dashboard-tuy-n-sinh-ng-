@@ -940,13 +940,24 @@ function extractMessageCount(actions: FbAction[] | undefined) {
 
 async function fetchFbInsightsForAccount(
   accountId: string,
-  accessToken: string
+  accessToken: string,
+  options: { datePreset?: string; since?: string; until?: string } = { datePreset: "maximum" }
 ): Promise<FbInsightApiRow[]> {
+  const params = new URLSearchParams({
+    fields: "date_start,spend,clicks,reach,impressions,actions",
+    time_increment: "1",
+    limit: "500",
+    access_token: accessToken
+  });
+
+  if (options.since && options.until) {
+    params.set("time_range", JSON.stringify({ since: options.since, until: options.until }));
+  } else {
+    params.set("date_preset", options.datePreset || "maximum");
+  }
+
   let nextUrl =
-    `https://graph.facebook.com/v20.0/${accountId}/insights` +
-    `?fields=date_start,spend,clicks,reach,impressions,actions` +
-    `&time_increment=1&date_preset=maximum&limit=500` +
-    `&access_token=${encodeURIComponent(accessToken)}`;
+    `https://graph.facebook.com/v20.0/${accountId}/insights?${params.toString()}`;
   const rows: FbInsightApiRow[] = [];
 
   while (nextUrl) {
@@ -974,6 +985,22 @@ async function fetchFbInsightsForAccount(
   }
 
   return rows;
+}
+
+function mergeFbInsightRows(rows: FbInsightApiRow[], overrideRows: FbInsightApiRow[]) {
+  const merged = new Map<string, FbInsightApiRow>();
+
+  for (const row of rows) {
+    const date = row.date_start || "";
+    if (date) merged.set(date, row);
+  }
+
+  for (const row of overrideRows) {
+    const date = row.date_start || "";
+    if (date) merged.set(date, row);
+  }
+
+  return Array.from(merged.values());
 }
 
 async function fetchFbAggregateInsightForAccount(
@@ -1043,11 +1070,20 @@ async function buildFbAdsPayload(timezone: string): Promise<FbAdsPayload> {
   }
 
   try {
+    const todayKey = formatDateInTimezone(new Date(), timezone);
     const insightsByAccount = await Promise.all(
-      accountIds.map(async (accountId) => ({
-        dailyRows: await fetchFbInsightsForAccount(accountId, accessToken),
-        aggregateRow: await fetchFbAggregateInsightForAccount(accountId, accessToken)
-      }))
+      accountIds.map(async (accountId) => {
+        const [dailyRows, todayRows, aggregateRow] = await Promise.all([
+          fetchFbInsightsForAccount(accountId, accessToken),
+          fetchFbInsightsForAccount(accountId, accessToken, { since: todayKey, until: todayKey }),
+          fetchFbAggregateInsightForAccount(accountId, accessToken)
+        ]);
+
+        return {
+          dailyRows: mergeFbInsightRows(dailyRows, todayRows),
+          aggregateRow
+        };
+      })
     );
     const grouped: Record<string, FbDailyInsight> = {};
 
@@ -1080,7 +1116,6 @@ async function buildFbAdsPayload(timezone: string): Promise<FbAdsPayload> {
     const byDay = Object.values(grouped)
       .filter((item) => item.date >= fbStartDate)
       .sort((a, b) => b.date.localeCompare(a.date));
-    const todayKey = formatDateInTimezone(new Date(), timezone);
     const yesterdayDate = new Date();
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     const yesterdayKey = formatDateInTimezone(yesterdayDate, timezone);
